@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Private Chat App</title>
-    <!-- Tailwind CSS CDN (for modern styling) -->
+    <title>Private Chat App with Gemini AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         // Tailwind configuration: using Inter font
@@ -21,195 +20,355 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8; /* Light blue-gray background */
+            background-color: #f0f4f8; 
+            margin-top: 6rem; /* Space for fixed header */
+            margin-bottom: 5rem; /* Space for fixed footer */
         }
-        /* Custom scrollbar style for better aesthetics */
         .chat-container::-webkit-scrollbar {
             width: 8px;
         }
         .chat-container::-webkit-scrollbar-thumb {
-            background-color: #cbd5e1; /* Slate 300 */
+            background-color: #cbd5e1; 
             border-radius: 4px;
+        }
+        /* Mobile adjustment for main content area */
+        @media (max-width: 640px) {
+            body {
+                margin-top: 7rem;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- The main root element where React will render the chat application -->
     <div id="root">
-        <!-- Loading spinner or message can go here until React loads -->
         <div class="flex items-center justify-center h-screen bg-gray-50">
             <div class="text-xl font-semibold text-gray-600">Loading Chat App...</div>
         </div>
     </div>
 
     <!-- 1. React Libraries -->
-    <!-- We load React and ReactDOM from CDN for simplicity -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     
     <!-- 2. Babel (to process JSX) -->
-    <!-- This is CRUCIAL! It converts the JSX (HTML-like code in JS) to pure JavaScript. -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- 3. Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <!-- 3. Firebase SDKs (Modern Modular SDK) -->
+    <script type="module">
+        // Use modern modular imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, query, orderBy, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        
+        // --- Global Firebase Configuration ---
+        const apiKey = ""; // Leave as-is
+        const MODEL_NAME = 'gemini-2.5-flash-preview-09-2025';
 
-    <!-- 4. Your Application Code (main.js content is moved here) -->
+        // Global variables provided by the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        if (Object.keys(firebaseConfig).length === 0) {
+            console.error("Firebase configuration is missing.");
+            return;
+        }
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        // Expose Firebase objects globally for the Babel script to use
+        window.db = db;
+        window.auth = auth;
+        window.appId = appId;
+        window.addDoc = addDoc;
+        window.collection = collection;
+        window.query = query;
+        window.orderBy = orderBy;
+        window.onSnapshot = onSnapshot;
+        window.serverTimestamp = serverTimestamp;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.signInAnonymously = signInAnonymously;
+        window.signInWithCustomToken = signInWithCustomToken;
+        window.getAuth = getAuth;
+        window.MODEL_NAME = MODEL_NAME;
+        window.apiKey = apiKey;
+
+        // Function to handle initial sign-in
+        async function handleSignIn() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                    console.log("Signed in with custom token.");
+                } else if (!auth.currentUser) {
+                    await signInAnonymously(auth);
+                    console.log("Signed in anonymously.");
+                }
+            } catch (error) {
+                console.error("Authentication Error:", error);
+            }
+        }
+        
+        // Start sign-in when the window loads
+        window.addEventListener('load', handleSignIn);
+    </script>
+
+    <!-- 4. Your Application Code (React JSX) -->
     <script type="text/babel">
-        // NOTE: Replace 'YOUR-PROJECT-ID' and other placeholders with your actual Firebase details
-        const firebaseConfig = {
-          apiKey: "YOUR-API-KEY", // Replace with your actual API Key
-          authDomain: "YOUR-PROJECT-ID.firebaseapp.com",
-          projectId: "YOUR-PROJECT-ID", // <-- Replace this
-          storageBucket: "YOUR-PROJECT-ID.appspot.com",
-          messagingSenderId: "YOUR-MESSAGING-SENDER-ID",
-          appId: "YOUR-APP-ID"
-        };
-        
-        // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        
-        // Use React hooks
         const { useState, useEffect, useRef } = React;
-        
+        const db = window.db;
+        const auth = window.auth;
+        const appId = window.appId;
+        const addDoc = window.addDoc;
+        const collection = window.collection;
+        const query = window.query;
+        const orderBy = window.orderBy;
+        const onSnapshot = window.onSnapshot;
+        const serverTimestamp = window.serverTimestamp;
+        const onAuthStateChanged = window.onAuthStateChanged;
+        const signInAnonymously = window.signInAnonymously;
+        const signInWithCustomToken = window.signInWithCustomToken;
+        const MODEL_NAME = window.MODEL_NAME;
+        const apiKey = window.apiKey;
+
+        // --- Utility Functions for Gemini API ---
+
+        // Function to make API calls to Gemini
+        async function callGeminiAPI(fullPrompt, systemInstruction) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: fullPrompt }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`API call failed: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            return text || "Error: Could not generate response.";
+        }
+
+        // Function to handle AI feature calls
+        const handleAIFeature = async (messageText, feature) => {
+            const systemPrompt = feature === 'Summarize' 
+                ? "You are a concise summarization expert. Summarize the user's message in one short sentence."
+                : "You are an expert on tone. Analyze the following message and state its overall tone (e.g., serious, playful, urgent) in a single phrase.";
+            
+            const fullPrompt = `Message: "${messageText}"`;
+            
+            const statusBox = document.getElementById('ai-status-box');
+            statusBox.innerHTML = `<span class="text-indigo-600 font-semibold">${feature}ing... Please wait.</span>`;
+            
+            try {
+                const resultText = await callGeminiAPI(fullPrompt, systemPrompt);
+                
+                statusBox.innerHTML = `
+                    <div class="p-3 bg-indigo-50 border border-indigo-200 rounded-lg shadow-sm">
+                        <p class="font-semibold text-indigo-700">${feature} Result:</p>
+                        <p class="text-sm text-gray-800 mt-1">${resultText}</p>
+                    </div>
+                `;
+            } catch (error) {
+                console.error(`Gemini ${feature} Error:`, error);
+                statusBox.innerHTML = `<span class="text-red-600">AI Error: Check console for details.</span>`;
+            }
+        };
+
+        // --- Sub-Components ---
+
+        function ChatMessage({ msg, isCurrentUser, onAIFeature }) {
+            const [showActions, setShowActions] = useState(false);
+
+            const timestampFormatted = msg.timestamp?.toDate 
+                ? new Date(msg.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) 
+                : '...';
+
+            return (
+                <div 
+                    className={`flex mb-4 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
+                    onMouseEnter={() => setShowActions(true)}
+                    onMouseLeave={() => setShowActions(false)}
+                    onClick={() => setShowActions(!showActions)} // for touch devices
+                >
+                    <div className="flex flex-col">
+                        <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-xl shadow-lg relative ${
+                            isCurrentUser 
+                                ? 'bg-indigo-600 text-white rounded-br-none' 
+                                : 'bg-white text-gray-800 rounded-tl-none border border-gray-200'
+                        }`}>
+                            <p className="font-semibold text-xs mb-1 opacity-70">
+                                {msg.displayName || `Guest-${msg.uid.substring(0, 4)}`}
+                            </p>
+                            <p>{msg.text}</p>
+                            <span className={`text-xs mt-1 block text-right opacity-60 ${isCurrentUser ? 'text-indigo-200' : 'text-gray-500'}`}>
+                                {timestampFormatted}
+                            </span>
+                        </div>
+                        
+                        {/* AI Actions Section */}
+                        {(showActions || isCurrentUser) && (
+                            <div className="flex mt-1 space-x-2 text-xs">
+                                <button 
+                                    className="text-gray-600 hover:text-indigo-600 font-medium transition duration-150 p-1 rounded-md bg-gray-100"
+                                    onClick={() => onAIFeature(msg.text, 'Summarize')}
+                                    title="Summarize message using Gemini"
+                                >
+                                    Summarize
+                                </button>
+                                <button 
+                                    className="text-gray-600 hover:text-indigo-600 font-medium transition duration-150 p-1 rounded-md bg-gray-100"
+                                    onClick={() => onAIFeature(msg.text, 'Tone Check')}
+                                    title="Check the tone using Gemini"
+                                >
+                                    Tone Check
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
         // --- Main Chat Component ---
         function App() {
-          const [messages, setMessages] = useState([]);
-          const [input, setInput] = useState('');
-          const [user, setUser] = useState(null);
-          const messagesEndRef = useRef(null);
-        
-          // Scroll to the latest message
-          const scrollToBottom = () => {
-            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-          };
-        
-          // 1. Authentication Listener
-          useEffect(() => {
-            // Sign in anonymously for simplicity if no user is signed in
-            const unsubscribe = auth.onAuthStateChanged(currentUser => {
-              if (currentUser) {
-                setUser(currentUser);
-              } else {
-                // Sign in anonymously if not authenticated
-                auth.signInAnonymously().catch(error => {
-                  console.error("Anonymous Sign In failed:", error);
+            const [messages, setMessages] = useState([]);
+            const [input, setInput] = useState('');
+            const [user, setUser] = useState(null);
+            const messagesEndRef = useRef(null);
+            const [authStatus, setAuthStatus] = useState("Authenticating...");
+
+            const scrollToBottom = () => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            };
+
+            // 1. Authentication Listener (Handles user state change)
+            useEffect(() => {
+                if (!auth) return;
+
+                const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+                    if (currentUser) {
+                        setUser(currentUser);
+                        setAuthStatus(`Signed in as: Guest-${currentUser.uid.substring(0, 4)}`);
+                    } else {
+                        setUser(null);
+                        // Sign-in logic is handled by the global handleSignIn function in the module script
+                        setAuthStatus("Authenticating...");
+                    }
                 });
-              }
-            });
-        
-            return unsubscribe;
-          }, []);
-        
-          // 2. Real-time Firestore Listener
-          useEffect(() => {
-            if (!user) return; // Wait until user is authenticated
-        
-            const q = db.collection('chats')
-              .orderBy('timestamp', 'asc'); // Sort by time
-        
-            const unsubscribe = q.onSnapshot(snapshot => {
-              const newMessages = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-              }));
-              setMessages(newMessages);
-            }, error => {
-              console.error("Error fetching chat messages:", error);
-            });
-        
-            return unsubscribe; // Cleanup listener on unmount
-          }, [user]);
-        
-          // 3. Scroll after messages are loaded
-          useEffect(scrollToBottom, [messages]);
-        
-        
-          // Function to send a message
-          const sendMessage = async (e) => {
-            e.preventDefault();
-            if (input.trim() === '' || !user) return;
-        
-            try {
-              await db.collection('chats').add({
-                text: input,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(), // Use server time
-                uid: user.uid,
-                displayName: `Guest-${user.uid.substring(0, 4)}`, // Simple anonymous name
-              });
-              setInput('');
-            } catch (error) {
-              console.error("Error sending message:", error);
-            }
-          };
-        
-          // The main UI (The part you had in your original JS file)
-          return (
-            <div className="flex flex-col h-screen bg-gray-100 font-sans">
-              
-              {/* Header */}
-              <header className="fixed top-0 left-0 right-0 p-4 bg-white shadow-md z-10">
-                <h1 className="text-2xl font-bold text-indigo-600">
-                  Private Chat (Firebase)
-                </h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  {user ? `Logged in as: Guest-${user.uid.substring(0, 4)}` : 'Authenticating...'}
-                </p>
-              </header>
-        
-              {/* Messages Area */}
-              <main className="flex-1 overflow-y-auto pt-24 pb-20 p-4 chat-container">
-                {messages.length === 0 && (
-                  <p className="text-center text-gray-500 mt-10">Start the conversation!</p>
-                )}
-                {messages.map((msg) => (
-                  <div key={msg.id} className={`flex mb-4 ${msg.uid === user?.uid ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-xl shadow ${
-                      msg.uid === user?.uid 
-                        ? 'bg-indigo-500 text-white rounded-br-none' 
-                        : 'bg-white text-gray-800 rounded-tl-none border border-gray-200'
-                    }`}>
-                      <p className="font-semibold text-xs mb-1 opacity-70">
-                        {msg.displayName || 'Anonymous'}
-                      </p>
-                      <p>{msg.text}</p>
-                      <span className="text-xs mt-1 block text-right opacity-60">
-                        {msg.timestamp?.toDate ? new Date(msg.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '...'}
-                      </span>
+                return unsubscribe;
+            }, []);
+
+            // 2. Real-time Firestore Listener
+            useEffect(() => {
+                if (!user || !db || !appId) return;
+
+                const messagesCollectionRef = collection(db, `artifacts/${appId}/public/data/messages`);
+                const q = query(messagesCollectionRef, orderBy('timestamp', 'asc'));
+
+                const unsubscribe = onSnapshot(q, (snapshot) => {
+                    const newMessages = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    setMessages(newMessages);
+                }, error => {
+                    console.error("Error fetching chat messages:", error);
+                    alert("Error fetching chat messages. Check console.");
+                });
+
+                return unsubscribe; 
+            }, [user]);
+
+            // 3. Scroll after messages are loaded
+            useEffect(scrollToBottom, [messages]);
+
+            // Function to send a message
+            const sendMessage = async (e) => {
+                e.preventDefault();
+                if (input.trim() === '' || !user) return;
+                
+                try {
+                    await addDoc(collection(db, `artifacts/${appId}/public/data/messages`), {
+                        text: input,
+                        timestamp: serverTimestamp(),
+                        uid: user.uid,
+                        displayName: `Guest-${user.uid.substring(0, 4)}`,
+                    });
+                    setInput('');
+                } catch (error) {
+                    console.error("Error sending message:", error);
+                    alert("Error sending message. Check console.");
+                }
+            };
+            
+            return (
+                <div className="flex flex-col h-screen bg-gray-100 font-sans">
+                    
+                    {/* Header */}
+                    <header className="fixed top-0 left-0 right-0 p-4 bg-white shadow-md z-20">
+                        <h1 className="text-2xl font-bold text-indigo-600">
+                            Private Chat with Gemini AI
+                        </h1>
+                        <p className="text-sm text-gray-500 mt-1" id="auth-status">
+                            {authStatus}
+                        </p>
+                    </header>
+
+                    {/* AI Status Box */}
+                    <div id="ai-status-box" className="fixed top-24 left-0 right-0 p-4 z-10">
+                        {/* AI results will appear here */}
                     </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </main>
-        
-              {/* Input Form */}
-              <footer className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 z-10">
-                <form onSubmit={sendMessage} className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Type a message..."
-                    className="flex-1 p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition duration-150"
-                    disabled={!user}
-                  />
-                  <button
-                    type="submit"
-                    className={`p-3 rounded-xl text-white font-semibold transition duration-150 shadow-lg ${
-                      input.trim() ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-400 cursor-not-allowed'
-                    }`}
-                    disabled={!input.trim() || !user}
-                  >
-                    Send
-                  </button>
-                </form>
-              </footer>
-            </div>
-          );
+            
+                    {/* Messages Area (pt-32 to account for header and AI status box) */}
+                    <main className="flex-1 overflow-y-auto pt-40 pb-20 p-4 chat-container md:pt-36">
+                        {messages.length === 0 && user && (
+                            <p className="text-center text-gray-500 mt-10">Start the conversation!</p>
+                        )}
+                        {messages.map((msg) => (
+                            <ChatMessage 
+                                key={msg.id}
+                                msg={msg}
+                                isCurrentUser={msg.uid === user?.uid}
+                                onAIFeature={handleAIFeature}
+                            />
+                        ))}
+                        <div ref={messagesEndRef} />
+                    </main>
+            
+                    {/* Input Form */}
+                    <footer className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 z-20">
+                        <form onSubmit={sendMessage} className="flex space-x-2">
+                            <input
+                                type="text"
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                placeholder={user ? "Type a message..." : "Waiting for authentication..."}
+                                className="flex-1 p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition duration-150"
+                                disabled={!user}
+                            />
+                            <button
+                                type="submit"
+                                className={`p-3 rounded-xl text-white font-semibold transition duration-150 shadow-lg ${
+                                    user && input.trim() ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-400 cursor-not-allowed'
+                                }`}
+                                disabled={!input.trim() || !user}
+                            >
+                                Send
+                            </button>
+                        </form>
+                    </footer>
+                </div>
+            );
         }
         
         // Render the main component into the root element
@@ -217,3 +376,4 @@
     </script>
 </body>
 </html>
+
