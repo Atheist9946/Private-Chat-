@@ -1,0 +1,23 @@
+{
+  "name": "private-chat-",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",  <--- (pC.js से बदल दिया गया)
+  "scripts": {
+    "start": "node main.js",  <--- (यह नई स्टार्ट स्क्रिप्ट है)
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "firebase-admin": "^13.6.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^7.0.0",
+    "mongoose": "^8.19.3"
+  }
+}
