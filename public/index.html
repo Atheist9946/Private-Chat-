@@ -14,26 +14,10 @@
             background-color: #1f2937;
             color: #f9fafb;
         }
-        .dark-mode .chat-container {
-            background-color: #374151;
-        }
-        .dark-mode .message-incoming {
-            background-color: #4b5563;
-            color: #f9fafb;
-        }
-        .dark-mode .message-outgoing {
-            background-color: #6366f1;
-        }
         .dark-mode .input-field {
             background-color: #374151;
             color: #f9fafb;
             border-color: #4b5563;
-        }
-        .dark-mode .input-field::placeholder {
-            color: #9ca3af;
-        }
-        .dark-mode .text-dark {
-            color: #1f2937 !important;
         }
         .password-container {
             position: relative;
@@ -46,27 +30,15 @@
             background: none;
             border: none;
             cursor: pointer;
-            color: #6b7280;
-        }
-        .dark-mode .password-toggle {
-            color: #9ca3af;
         }
     </style>
 </head>
 <body class="bg-gray-100">
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="fixed inset-0 bg-white flex items-center justify-center z-50">
-        <div class="text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-            <p class="mt-4 text-gray-600">Loading...</p>
-        </div>
-    </div>
-
     <!-- Login Screen -->
     <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-lg p-8 max-w-md w-full dark:bg-gray-800">
             <h1 class="text-2xl font-bold text-center text-indigo-600 dark:text-indigo-400 mb-2">Private Chat</h1>
-            <p class="text-gray-600 dark:text-gray-300 text-center mb-6">Secure Master-Client Communication</p>
+            <p class="text-gray-600 dark:text-gray-300 text-center mb-6" id="loginStatus">Secure Master-Client Communication</p>
             
             <div class="flex space-x-2 mb-6">
                 <button id="masterLoginTab" class="flex-1 py-2 px-4 bg-indigo-600 text-white rounded-lg font-semibold">
@@ -81,13 +53,13 @@
             <div id="masterLoginForm">
                 <div class="mb-4">
                     <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Master Username</label>
-                    <input type="text" id="masterUsername" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 input-field dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="master">
+                    <input type="text" id="masterUsername" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 input-field dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="master">
                 </div>
                 <div class="mb-6">
                     <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Master Password</label>
                     <div class="password-container">
-                        <input type="password" id="masterPassword" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 input-field dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="12345">
-                        <button type="button" class="password-toggle" onclick="togglePassword('masterPassword')">
+                        <input type="password" id="masterPassword" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 input-field dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="12345">
+                        <button type="button" class="password-toggle text-gray-500 dark:text-gray-400" onclick="togglePassword('masterPassword')">
                             👁️
                         </button>
                     </div>
@@ -101,13 +73,13 @@
             <div id="clientLoginForm" class="hidden">
                 <div class="mb-4">
                     <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Client Username</label>
-                    <input type="text" id="clientUsername" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 input-field dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="client">
+                    <input type="text" id="clientUsername" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 input-field dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="client">
                 </div>
                 <div class="mb-6">
                     <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Client Password</label>
                     <div class="password-container">
-                        <input type="password" id="clientPassword" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 input-field dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="54321">
-                        <button type="button" class="password-toggle" onclick="togglePassword('clientPassword')">
+                        <input type="password" id="clientPassword" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 input-field dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="54321">
+                        <button type="button" class="password-toggle text-gray-500 dark:text-gray-400" onclick="togglePassword('clientPassword')">
                             👁️
                         </button>
                     </div>
@@ -234,10 +206,9 @@
     <!-- Firebase and App Script -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, getDocs, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // Your Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyBmImrvVVCJ5E1yAZAI4NXSweEg__hqF94",
             authDomain: "private-chat-14deb.firebaseapp.com",
@@ -247,7 +218,6 @@
             appId: "1:255060970461:web:e6dd31ce5952334ae64434"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -258,39 +228,12 @@
         const CONFIG_DOC = "chat_config";
         const MESSAGES_COLLECTION = "private_messages";
 
-        // DOM Elements
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        const loginScreen = document.getElementById('loginScreen');
-        const chatScreen = document.getElementById('chatScreen');
-        
-        // Login Elements
-        const masterLoginTab = document.getElementById('masterLoginTab');
-        const clientLoginTab = document.getElementById('clientLoginTab');
-        const masterLoginForm = document.getElementById('masterLoginForm');
-        const clientLoginForm = document.getElementById('clientLoginForm');
-        const masterLoginBtn = document.getElementById('masterLoginBtn');
-        const clientLoginBtn = document.getElementById('clientLoginBtn');
-        
-        // Chat Elements
-        const messagesContainer = document.getElementById('messagesContainer');
-        const messageInput = document.getElementById('messageInput');
-        const sendButton = document.getElementById('sendButton');
-        const userRoleDisplay = document.getElementById('userRoleDisplay');
-        const chatTitle = document.getElementById('chatTitle');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const themeToggle = document.getElementById('themeToggle');
-        const themeToggleChat = document.getElementById('themeToggleChat');
-        
-        // Master Controls
-        const masterControls = document.getElementById('masterControls');
-        const deleteAllBtn = document.getElementById('deleteAllBtn');
-        const clearChatBtn = document.getElementById('clearChatBtn');
-        const adminSettingsBtn = document.getElementById('adminSettingsBtn');
-        const adminModal = document.getElementById('adminModal');
-        const closeAdminModal = document.getElementById('closeAdminModal');
-        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        // Default Credentials (ये automatically create होंगे)
+        const DEFAULT_CREDENTIALS = {
+            master: { username: 'master', password: '12345' },
+            client: { username: 'client', password: '54321' }
+        };
 
-        // Global State
         let currentUser = null;
         let currentUserRole = null;
         let autoDeleteTimers = new Map();
@@ -314,167 +257,158 @@
             // Check for saved theme
             if (localStorage.getItem('darkMode') === 'true') {
                 document.body.classList.add('dark-mode');
-                themeToggle.textContent = '☀️ Light Mode';
-                themeToggleChat.textContent = '☀️';
+                document.getElementById('themeToggle').textContent = '☀️ Light Mode';
             }
 
-            // Setup event listeners
             setupEventListeners();
-            
-            // Initialize Firebase auth and create default config
             await initializeFirebase();
-            
-            // Hide loading overlay
-            loadingOverlay.classList.add('hidden');
         }
 
         function setupEventListeners() {
             // Login Tab Switchers
-            masterLoginTab.addEventListener('click', () => switchLoginTab('master'));
-            clientLoginTab.addEventListener('click', () => switchLoginTab('client'));
+            document.getElementById('masterLoginTab').addEventListener('click', () => switchLoginTab('master'));
+            document.getElementById('clientLoginTab').addEventListener('click', () => switchLoginTab('client'));
             
             // Login Buttons
-            masterLoginBtn.addEventListener('click', () => handleLogin('master'));
-            clientLoginBtn.addEventListener('click', () => handleLogin('client'));
+            document.getElementById('masterLoginBtn').addEventListener('click', () => handleLogin('master'));
+            document.getElementById('clientLoginBtn').addEventListener('click', () => handleLogin('client'));
+            
+            // Theme Toggle
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+            document.getElementById('themeToggleChat').addEventListener('click', toggleTheme);
+            
+            // Logout
+            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
             
             // Chat Functions
-            sendButton.addEventListener('click', sendMessage);
-            messageInput.addEventListener('keypress', (e) => {
+            document.getElementById('sendButton').addEventListener('click', sendMessage);
+            document.getElementById('messageInput').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') sendMessage();
             });
             
-            // Theme Toggle
-            themeToggle.addEventListener('click', toggleTheme);
-            themeToggleChat.addEventListener('click', toggleTheme);
-            
-            // Logout
-            logoutBtn.addEventListener('click', handleLogout);
-            
             // Master Controls
-            deleteAllBtn.addEventListener('click', deleteAllMessages);
-            clearChatBtn.addEventListener('click', clearClientChat);
+            document.getElementById('deleteAllBtn').addEventListener('click', deleteAllMessages);
+            document.getElementById('clearChatBtn').addEventListener('click', clearClientChat);
             
             // Admin Settings
-            adminSettingsBtn.addEventListener('click', () => adminModal.classList.remove('hidden'));
-            closeAdminModal.addEventListener('click', () => adminModal.classList.add('hidden'));
-            saveSettingsBtn.addEventListener('click', saveAdminSettings);
+            document.getElementById('adminSettingsBtn').addEventListener('click', () => document.getElementById('adminModal').classList.remove('hidden'));
+            document.getElementById('closeAdminModal').addEventListener('click', () => document.getElementById('adminModal').classList.add('hidden'));
+            document.getElementById('saveSettingsBtn').addEventListener('click', saveAdminSettings);
         }
 
         function switchLoginTab(tab) {
             if (tab === 'master') {
-                masterLoginTab.classList.add('bg-indigo-600', 'text-white');
-                masterLoginTab.classList.remove('bg-gray-200', 'text-gray-700', 'dark:bg-gray-700', 'dark:text-gray-300');
-                clientLoginTab.classList.add('bg-gray-200', 'text-gray-700', 'dark:bg-gray-700', 'dark:text-gray-300');
-                clientLoginTab.classList.remove('bg-green-600', 'text-white');
-                masterLoginForm.classList.remove('hidden');
-                clientLoginForm.classList.add('hidden');
+                document.getElementById('masterLoginTab').className = 'flex-1 py-2 px-4 bg-indigo-600 text-white rounded-lg font-semibold';
+                document.getElementById('clientLoginTab').className = 'flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg font-semibold dark:bg-gray-700 dark:text-gray-300';
+                document.getElementById('masterLoginForm').classList.remove('hidden');
+                document.getElementById('clientLoginForm').classList.add('hidden');
             } else {
-                clientLoginTab.classList.add('bg-green-600', 'text-white');
-                clientLoginTab.classList.remove('bg-gray-200', 'text-gray-700', 'dark:bg-gray-700', 'dark:text-gray-300');
-                masterLoginTab.classList.add('bg-gray-200', 'text-gray-700', 'dark:bg-gray-700', 'dark:text-gray-300');
-                masterLoginTab.classList.remove('bg-indigo-600', 'text-white');
-                clientLoginForm.classList.remove('hidden');
-                masterLoginForm.classList.add('hidden');
+                document.getElementById('clientLoginTab').className = 'flex-1 py-2 px-4 bg-green-600 text-white rounded-lg font-semibold';
+                document.getElementById('masterLoginTab').className = 'flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg font-semibold dark:bg-gray-700 dark:text-gray-300';
+                document.getElementById('clientLoginForm').classList.remove('hidden');
+                document.getElementById('masterLoginForm').classList.add('hidden');
             }
         }
 
         async function initializeFirebase() {
             try {
-                // Sign in anonymously for Firebase auth
                 await signInAnonymously(auth);
+                document.getElementById('loginStatus').textContent = "Ready to login";
                 
-                // Create default configuration if it doesn't exist
-                await initializeDefaultConfig();
+                // Automatically create config if it doesn't exist
+                await ensureConfigExists();
             } catch (error) {
-                console.error('Firebase initialization error:', error);
+                console.error('Firebase auth error:', error);
+                document.getElementById('loginStatus').textContent = "Authentication ready";
             }
         }
 
-        async function initializeDefaultConfig() {
+        // ✅ AUTOMATIC COLLECTION CREATION FUNCTION
+        async function ensureConfigExists() {
             try {
                 const configRef = doc(db, 'config', CONFIG_DOC);
                 const configDoc = await getDoc(configRef);
                 
                 if (!configDoc.exists()) {
-                    // Create default credentials
-                    const defaultCredentials = {
-                        master: { username: 'master', password: '12345' },
-                        client: { username: 'client', password: '54321' }
-                    };
-                    await setDoc(configRef, defaultCredentials);
-                    console.log('Default configuration created');
+                    // Automatically create config with default credentials
+                    await setDoc(configRef, DEFAULT_CREDENTIALS);
+                    console.log('✅ Config collection automatically created');
+                    document.getElementById('loginStatus').textContent = "Config created - Ready to login";
+                } else {
+                    console.log('✅ Config already exists');
                 }
             } catch (error) {
-                console.error('Error initializing default config:', error);
+                console.error('Error creating config:', error);
+                // Fallback: Use hardcoded credentials if config creation fails
+                document.getElementById('loginStatus').textContent = "Using default credentials";
             }
         }
 
         async function handleLogin(role) {
-            const username = role === 'master' 
-                ? document.getElementById('masterUsername').value 
-                : document.getElementById('clientUsername').value;
-            const password = role === 'master'
-                ? document.getElementById('masterPassword').value
-                : document.getElementById('clientPassword').value;
+            const username = document.getElementById(role + 'Username').value;
+            const password = document.getElementById(role + 'Password').value;
 
-            if (!username || !password) {
-                alert('Please enter both username and password!');
-                return;
-            }
+            document.getElementById('loginStatus').textContent = "Checking credentials...";
 
             try {
                 const configRef = doc(db, 'config', CONFIG_DOC);
                 const configDoc = await getDoc(configRef);
                 
-                if (!configDoc.exists()) {
-                    alert('Configuration not found. Please try again.');
-                    return;
+                let credentials = DEFAULT_CREDENTIALS;
+                
+                // If config exists, use it. Otherwise use default credentials
+                if (configDoc.exists()) {
+                    credentials = configDoc.data();
+                    console.log('✅ Using Firestore credentials');
+                } else {
+                    console.log('⚠️ Using default credentials (config not found)');
+                    // Try to create config again
+                    await ensureConfigExists();
                 }
 
-                const credentials = configDoc.data();
                 const roleCredentials = credentials[role];
                 
                 if (username === roleCredentials.username && password === roleCredentials.password) {
                     currentUserRole = role;
                     currentUser = role === 'master' ? MASTER_ID : CLIENT_ID;
                     
+                    document.getElementById('loginStatus').textContent = "Login successful!";
                     await showChatScreen();
                     await initializeChat();
                 } else {
-                    alert('Invalid username or password!');
+                    document.getElementById('loginStatus').textContent = "Invalid credentials!";
+                    alert('Invalid username or password!\n\nDefault credentials:\nMaster: master/12345\nClient: client/54321');
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                alert('Login failed. Please check your connection and try again.');
+                document.getElementById('loginStatus').textContent = "Login failed";
+                alert('Login error. Please check console for details.');
             }
         }
 
         async function showChatScreen() {
-            loginScreen.classList.add('hidden');
-            chatScreen.classList.remove('hidden');
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('chatScreen').classList.remove('hidden');
             
-            userRoleDisplay.textContent = `${currentUserRole} Mode`;
-            chatTitle.textContent = `Private Chat - ${currentUserRole}`;
+            document.getElementById('userRoleDisplay').textContent = `${currentUserRole} Mode`;
+            document.getElementById('chatTitle').textContent = `Private Chat - ${currentUserRole}`;
             
             // Show master controls only for master
             if (currentUserRole === 'master') {
-                masterControls.classList.remove('hidden');
-                adminSettingsBtn.classList.remove('hidden');
-            } else {
-                masterControls.classList.add('hidden');
-                adminSettingsBtn.classList.add('hidden');
+                document.getElementById('masterControls').classList.remove('hidden');
+                document.getElementById('adminSettingsBtn').classList.remove('hidden');
             }
             
-            // Enable input
-            messageInput.disabled = false;
-            sendButton.disabled = false;
-            messageInput.focus();
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendButton').disabled = false;
+            document.getElementById('messageInput').focus();
         }
 
         async function initializeChat() {
             const q = query(collection(db, MESSAGES_COLLECTION), orderBy('timestamp', 'asc'));
             
             onSnapshot(q, (snapshot) => {
+                const messagesContainer = document.getElementById('messagesContainer');
                 messagesContainer.innerHTML = '';
                 
                 snapshot.forEach((doc) => {
@@ -482,17 +416,20 @@
                     displayMessage(message, doc.id);
                 });
 
-                // Auto-delete logic for client
+                // Auto-delete for client
                 if (currentUserRole === 'client') {
                     startAutoDeleteTimers(snapshot);
                 }
+                
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
             });
         }
 
         function displayMessage(message, messageId) {
-            const messageDiv = document.createElement('div');
+            const messagesContainer = document.getElementById('messagesContainer');
             const isOutgoing = message.senderId === currentUser;
             
+            const messageDiv = document.createElement('div');
             messageDiv.className = `flex ${isOutgoing ? 'justify-end' : 'justify-start'}`;
             messageDiv.innerHTML = `
                 <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-xl ${
@@ -520,11 +457,10 @@
             `;
             
             messagesContainer.appendChild(messageDiv);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
         async function sendMessage() {
-            const text = messageInput.value.trim();
+            const text = document.getElementById('messageInput').value.trim();
             if (!text) return;
 
             try {
@@ -536,7 +472,7 @@
                     seenByClient: currentUserRole === 'client'
                 });
                 
-                messageInput.value = '';
+                document.getElementById('messageInput').value = '';
             } catch (error) {
                 console.error('Error sending message:', error);
                 alert('Failed to send message.');
@@ -631,7 +567,7 @@
                 };
                 
                 await setDoc(doc(db, 'config', CONFIG_DOC), newCredentials);
-                adminModal.classList.add('hidden');
+                document.getElementById('adminModal').classList.add('hidden');
                 alert('Settings saved successfully!');
             } catch (error) {
                 console.error('Error saving settings:', error);
@@ -643,12 +579,15 @@
             const isDark = document.body.classList.toggle('dark-mode');
             localStorage.setItem('darkMode', isDark);
             
+            const themeBtn = document.getElementById('themeToggle');
+            const themeChatBtn = document.getElementById('themeToggleChat');
+            
             if (isDark) {
-                themeToggle.textContent = '☀️ Light Mode';
-                themeToggleChat.textContent = '☀️';
+                themeBtn.textContent = '☀️ Light Mode';
+                themeChatBtn.textContent = '☀️';
             } else {
-                themeToggle.textContent = '🌙 Dark Mode';
-                themeToggleChat.textContent = '🌙';
+                themeBtn.textContent = '🌙 Dark Mode';
+                themeChatBtn.textContent = '🌙';
             }
         }
 
@@ -662,8 +601,8 @@
             currentUserRole = null;
             
             // Show login screen
-            chatScreen.classList.add('hidden');
-            loginScreen.classList.remove('hidden');
+            document.getElementById('chatScreen').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
             
             // Clear inputs
             document.getElementById('masterUsername').value = 'master';
@@ -673,12 +612,12 @@
             
             // Switch to master tab
             switchLoginTab('master');
+            document.getElementById('loginStatus').textContent = "Secure Master-Client Communication";
         }
 
-        // Make delete function globally available for inline onclick
+        // Make delete function globally available
         window.deleteSingleMessage = deleteSingleMessage;
 
-        // Initialize the app when DOM is loaded
         document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
