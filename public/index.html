@@ -24,6 +24,33 @@
         .dark-mode .message-outgoing {
             background-color: #6366f1;
         }
+        .dark-mode .input-field {
+            background-color: #374151;
+            color: #f9fafb;
+            border-color: #4b5563;
+        }
+        .dark-mode .input-field::placeholder {
+            color: #9ca3af;
+        }
+        .dark-mode .text-dark {
+            color: #1f2937 !important;
+        }
+        .password-container {
+            position: relative;
+        }
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #6b7280;
+        }
+        .dark-mode .password-toggle {
+            color: #9ca3af;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -37,15 +64,15 @@
 
     <!-- Login Screen -->
     <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
-            <h1 class="text-2xl font-bold text-center text-indigo-600 mb-2">Private Chat</h1>
-            <p class="text-gray-600 text-center mb-6">Secure Master-Client Communication</p>
+        <div class="bg-white rounded-xl shadow-lg p-8 max-w-md w-full dark:bg-gray-800">
+            <h1 class="text-2xl font-bold text-center text-indigo-600 dark:text-indigo-400 mb-2">Private Chat</h1>
+            <p class="text-gray-600 dark:text-gray-300 text-center mb-6">Secure Master-Client Communication</p>
             
             <div class="flex space-x-2 mb-6">
                 <button id="masterLoginTab" class="flex-1 py-2 px-4 bg-indigo-600 text-white rounded-lg font-semibold">
                     Master
                 </button>
-                <button id="clientLoginTab" class="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg font-semibold">
+                <button id="clientLoginTab" class="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg font-semibold dark:bg-gray-700 dark:text-gray-300">
                     Client
                 </button>
             </div>
@@ -53,12 +80,17 @@
             <!-- Master Login Form -->
             <div id="masterLoginForm">
                 <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Master Username</label>
-                    <input type="text" id="masterUsername" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value="master">
+                    <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Master Username</label>
+                    <input type="text" id="masterUsername" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 input-field dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="master">
                 </div>
                 <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Master Password</label>
-                    <input type="password" id="masterPassword" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value="12345">
+                    <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Master Password</label>
+                    <div class="password-container">
+                        <input type="password" id="masterPassword" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 input-field dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="12345">
+                        <button type="button" class="password-toggle" onclick="togglePassword('masterPassword')">
+                            👁️
+                        </button>
+                    </div>
                 </div>
                 <button id="masterLoginBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-lg font-semibold transition duration-150">
                     Master Login
@@ -68,12 +100,17 @@
             <!-- Client Login Form -->
             <div id="clientLoginForm" class="hidden">
                 <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Client Username</label>
-                    <input type="text" id="clientUsername" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value="client">
+                    <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Client Username</label>
+                    <input type="text" id="clientUsername" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 input-field dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="client">
                 </div>
                 <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Client Password</label>
-                    <input type="password" id="clientPassword" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value="54321">
+                    <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Client Password</label>
+                    <div class="password-container">
+                        <input type="password" id="clientPassword" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 input-field dark:bg-gray-700 dark:border-gray-600 dark:text-white" value="54321">
+                        <button type="button" class="password-toggle" onclick="togglePassword('clientPassword')">
+                            👁️
+                        </button>
+                    </div>
                 </div>
                 <button id="clientLoginBtn" class="w-full bg-green-600 hover:bg-green-700 text-white p-3 rounded-lg font-semibold transition duration-150">
                     Client Login
@@ -81,7 +118,7 @@
             </div>
 
             <div class="mt-6 text-center">
-                <button id="themeToggle" class="text-gray-500 hover:text-gray-700">
+                <button id="themeToggle" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                     🌙 Dark Mode
                 </button>
             </div>
@@ -118,19 +155,29 @@
                 
                 <div class="mb-4">
                     <label class="block text-sm font-medium mb-2 dark:text-gray-300">Master Username</label>
-                    <input type="text" id="newMasterUser" class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:text-white" value="master">
+                    <input type="text" id="newMasterUser" class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600" value="master">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium mb-2 dark:text-gray-300">Master Password</label>
-                    <input type="password" id="newMasterPass" class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:text-white" value="12345">
+                    <div class="password-container">
+                        <input type="password" id="newMasterPass" class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600" value="12345">
+                        <button type="button" class="password-toggle" onclick="togglePassword('newMasterPass')">
+                            👁️
+                        </button>
+                    </div>
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium mb-2 dark:text-gray-300">Client Username</label>
-                    <input type="text" id="newClientUser" class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:text-white" value="client">
+                    <input type="text" id="newClientUser" class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600" value="client">
                 </div>
                 <div class="mb-6">
                     <label class="block text-sm font-medium mb-2 dark:text-gray-300">Client Password</label>
-                    <input type="password" id="newClientPass" class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:text-white" value="54321">
+                    <div class="password-container">
+                        <input type="password" id="newClientPass" class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600" value="54321">
+                        <button type="button" class="password-toggle" onclick="togglePassword('newClientPass')">
+                            👁️
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="flex space-x-3">
@@ -159,7 +206,7 @@
                         type="text" 
                         id="messageInput" 
                         placeholder="Type your message..." 
-                        class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                        class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 input-field dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                         disabled
                     >
                     <button 
@@ -190,7 +237,7 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, getDocs, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // Your Firebase Configuration - Replace with your actual config
+        // Your Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyBmImrvVVCJ5E1yAZAI4NXSweEg__hqF94",
             authDomain: "private-chat-14deb.firebaseapp.com",
@@ -248,6 +295,20 @@
         let currentUserRole = null;
         let autoDeleteTimers = new Map();
 
+        // Password Toggle Function
+        window.togglePassword = function(inputId) {
+            const input = document.getElementById(inputId);
+            const toggleBtn = input.parentNode.querySelector('.password-toggle');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                toggleBtn.textContent = '🔒';
+            } else {
+                input.type = 'password';
+                toggleBtn.textContent = '👁️';
+            }
+        };
+
         // Initialize App
         async function initApp() {
             // Check for saved theme
@@ -260,8 +321,8 @@
             // Setup event listeners
             setupEventListeners();
             
-            // Initialize Firebase auth
-            await initializeAuth();
+            // Initialize Firebase auth and create default config
+            await initializeFirebase();
             
             // Hide loading overlay
             loadingOverlay.classList.add('hidden');
@@ -302,18 +363,49 @@
         function switchLoginTab(tab) {
             if (tab === 'master') {
                 masterLoginTab.classList.add('bg-indigo-600', 'text-white');
-                masterLoginTab.classList.remove('bg-gray-200', 'text-gray-700');
-                clientLoginTab.classList.add('bg-gray-200', 'text-gray-700');
+                masterLoginTab.classList.remove('bg-gray-200', 'text-gray-700', 'dark:bg-gray-700', 'dark:text-gray-300');
+                clientLoginTab.classList.add('bg-gray-200', 'text-gray-700', 'dark:bg-gray-700', 'dark:text-gray-300');
                 clientLoginTab.classList.remove('bg-green-600', 'text-white');
                 masterLoginForm.classList.remove('hidden');
                 clientLoginForm.classList.add('hidden');
             } else {
                 clientLoginTab.classList.add('bg-green-600', 'text-white');
-                clientLoginTab.classList.remove('bg-gray-200', 'text-gray-700');
-                masterLoginTab.classList.add('bg-gray-200', 'text-gray-700');
+                clientLoginTab.classList.remove('bg-gray-200', 'text-gray-700', 'dark:bg-gray-700', 'dark:text-gray-300');
+                masterLoginTab.classList.add('bg-gray-200', 'text-gray-700', 'dark:bg-gray-700', 'dark:text-gray-300');
                 masterLoginTab.classList.remove('bg-indigo-600', 'text-white');
                 clientLoginForm.classList.remove('hidden');
                 masterLoginForm.classList.add('hidden');
+            }
+        }
+
+        async function initializeFirebase() {
+            try {
+                // Sign in anonymously for Firebase auth
+                await signInAnonymously(auth);
+                
+                // Create default configuration if it doesn't exist
+                await initializeDefaultConfig();
+            } catch (error) {
+                console.error('Firebase initialization error:', error);
+            }
+        }
+
+        async function initializeDefaultConfig() {
+            try {
+                const configRef = doc(db, 'config', CONFIG_DOC);
+                const configDoc = await getDoc(configRef);
+                
+                if (!configDoc.exists()) {
+                    // Create default credentials
+                    const defaultCredentials = {
+                        master: { username: 'master', password: '12345' },
+                        client: { username: 'client', password: '54321' }
+                    };
+                    await setDoc(configRef, defaultCredentials);
+                    console.log('Default configuration created');
+                }
+            } catch (error) {
+                console.error('Error initializing default config:', error);
             }
         }
 
@@ -325,22 +417,23 @@
                 ? document.getElementById('masterPassword').value
                 : document.getElementById('clientPassword').value;
 
-            try {
-                const configDoc = await getDoc(doc(db, 'config', CONFIG_DOC));
-                let credentials;
+            if (!username || !password) {
+                alert('Please enter both username and password!');
+                return;
+            }
 
-                if (configDoc.exists()) {
-                    credentials = configDoc.data();
-                } else {
-                    // Create default credentials
-                    credentials = {
-                        master: { username: 'master', password: '12345' },
-                        client: { username: 'client', password: '54321' }
-                    };
-                    await setDoc(doc(db, 'config', CONFIG_DOC), credentials);
+            try {
+                const configRef = doc(db, 'config', CONFIG_DOC);
+                const configDoc = await getDoc(configRef);
+                
+                if (!configDoc.exists()) {
+                    alert('Configuration not found. Please try again.');
+                    return;
                 }
 
+                const credentials = configDoc.data();
                 const roleCredentials = credentials[role];
+                
                 if (username === roleCredentials.username && password === roleCredentials.password) {
                     currentUserRole = role;
                     currentUser = role === 'master' ? MASTER_ID : CLIENT_ID;
@@ -348,11 +441,11 @@
                     await showChatScreen();
                     await initializeChat();
                 } else {
-                    alert('Invalid credentials!');
+                    alert('Invalid username or password!');
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                alert('Login failed. Please try again.');
+                alert('Login failed. Please check your connection and try again.');
             }
         }
 
@@ -580,15 +673,6 @@
             
             // Switch to master tab
             switchLoginTab('master');
-        }
-
-        async function initializeAuth() {
-            try {
-                // Sign in anonymously for Firebase auth (required for Firestore)
-                await signInAnonymously(auth);
-            } catch (error) {
-                console.error('Auth initialization error:', error);
-            }
         }
 
         // Make delete function globally available for inline onclick

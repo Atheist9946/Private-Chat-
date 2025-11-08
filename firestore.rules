@@ -1,13 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Configuration document - readable by all, writable only by authenticated users
+    // Configuration document
     match /config/chat_config {
       allow read, write: if request.auth != null;
     }
     
-    // Private messages - anyone can read/write (for demo purposes)
-    // In production, you might want to add more security
+    // Private messages
     match /private_messages/{document} {
       allow read, write: if request.auth != null;
     }
