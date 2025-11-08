@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Private Chat App with Gemini AI</title>
+    <title>Private Chat with Gemini AI</title>
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // Tailwind configuration: using Inter font
+        // Tailwind configuration: Inter font ko default rakha gaya hai
         tailwind.config = {
             theme: {
                 extend: {
@@ -17,363 +18,383 @@
             }
         }
     </script>
+    <!-- Font Awesome for icons -->
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
     <style>
+        /* Custom CSS */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8; 
-            margin-top: 6rem; /* Space for fixed header */
-            margin-bottom: 5rem; /* Space for fixed footer */
+            background-color: #f3f4f6;
         }
-        .chat-container::-webkit-scrollbar {
-            width: 8px;
+        .chat-container {
+            max-width: 700px;
+            margin: 20px auto;
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            background-color: white;
         }
-        .chat-container::-webkit-scrollbar-thumb {
-            background-color: #cbd5e1; 
-            border-radius: 4px;
+        .message-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1rem;
         }
-        /* Mobile adjustment for main content area */
-        @media (max-width: 640px) {
-            body {
-                margin-top: 7rem;
-            }
+        .message {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            word-wrap: break-word;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .message-incoming {
+            background-color: #e5e7eb; /* Halka grey */
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        .message-outgoing {
+            background-color: #4f46e5; /* Gehra neela (Deep Indigo) */
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        .loading-overlay {
+            z-index: 1000;
+            background-color: rgba(255, 255, 255, 0.9);
         }
     </style>
 </head>
-<body>
-    <div id="root">
-        <div class="flex items-center justify-center h-screen bg-gray-50">
-            <div class="text-xl font-semibold text-gray-600">Loading Chat App...</div>
+<body class="p-4">
+
+    <!-- Loading Overlay (Authentication / AI Processing) -->
+    <div id="loadingOverlay" class="fixed inset-0 loading-overlay hidden">
+        <div class="flex flex-col items-center justify-center h-full">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <p id="loading-text" class="mt-4 text-lg font-semibold text-indigo-600">Authenticating...</p>
         </div>
     </div>
 
-    <!-- 1. React Libraries -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-    
-    <!-- 2. Babel (to process JSX) -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <div class="chat-container">
+        <!-- Header -->
+        <header class="p-4 border-b border-gray-200 bg-indigo-50">
+            <h1 class="text-2xl font-bold text-indigo-700">Gemini-Powered Chat</h1>
+            <p id="authStatus" class="text-sm text-gray-500 mt-1">Authenticating...</p>
+        </header>
 
-    <!-- 3. Firebase SDKs (Modern Modular SDK) -->
-    <script type="module">
-        // Use modern modular imports
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, query, orderBy, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        <!-- Message Area -->
+        <div id="messages" class="message-area flex flex-col">
+            <p id="initial-msg" class="text-center text-gray-400 my-4">Waiting for connection...</p>
+        </div>
         
-        // --- Global Firebase Configuration ---
-        const apiKey = ""; // Leave as-is
-        const MODEL_NAME = 'gemini-2.5-flash-preview-09-2025';
+        <!-- AI Response/Status Area: Hidden by default -->
+        <div id="ai-status-box" class="p-3 bg-yellow-50 border-t border-yellow-200 hidden">
+            <p class="font-semibold text-yellow-800">AI Result:</p>
+            <p id="ai-result-content" class="text-sm text-gray-700 mt-1"></p>
+        </div>
 
-        // Global variables provided by the Canvas environment
+        <!-- Input Area -->
+        <div class="p-4 border-t border-gray-200 bg-white flex items-center space-x-2">
+            <input type="text" id="messageInput" placeholder="Type a message..." 
+                   class="flex-1 p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-150" disabled>
+            <button id="sendButton" class="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-semibold transition duration-150 shadow-md disabled:bg-indigo-400" disabled>
+                Send
+            </button>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic (Single Module for all Firebase and App Logic) -->
+    <script type="module">
+        // --- Firebase Modules Import ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, addDoc, onSnapshot, collection, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Configuration & Global State ---
+        // Saare variables ko sirf ek baar 'let' ya 'const' se declare kiya gaya hai
+        let db, auth;
+        let userId = null;
+        let isAuthReady = false;
+
+        // Canvas environment variables ko safely access karein
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        if (Object.keys(firebaseConfig).length === 0) {
-            console.error("Firebase configuration is missing.");
-            return;
+        // Gemini API configuration
+        const apiKey = ""; 
+        const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
+
+        // UI Elements
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const authStatusElement = document.getElementById('authStatus');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loading-text');
+        const aiStatusBox = document.getElementById('ai-status-box');
+        const aiResultContent = document.getElementById('ai-result-content');
+
+        // --- Utility Functions ---
+
+        // Function: Loading state ko manage karna
+        function setLoading(isLoading, text = "Processing...") {
+            loadingText.textContent = isLoading ? text : "Authenticating...";
+            loadingOverlay.classList.toggle('hidden', !isLoading);
+            // Input aur button ko disable/enable karna authentication state par nirbhar karta hai
+            messageInput.disabled = isLoading || !isAuthReady;
+            sendButton.disabled = isLoading || !isAuthReady;
+        }
+        
+        // Function: AI Status box ko hide karna
+        function hideAIStatus() {
+            aiStatusBox.classList.add('hidden');
         }
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        
-        // Expose Firebase objects globally for the Babel script to use
-        window.db = db;
-        window.auth = auth;
-        window.appId = appId;
-        window.addDoc = addDoc;
-        window.collection = collection;
-        window.query = query;
-        window.orderBy = orderBy;
-        window.onSnapshot = onSnapshot;
-        window.serverTimestamp = serverTimestamp;
-        window.onAuthStateChanged = onAuthStateChanged;
-        window.signInAnonymously = signInAnonymously;
-        window.signInWithCustomToken = signInWithCustomToken;
-        window.getAuth = getAuth;
-        window.MODEL_NAME = MODEL_NAME;
-        window.apiKey = apiKey;
+        // --- Core Logic Functions ---
 
-        // Function to handle initial sign-in
-        async function handleSignIn() {
+        // Function: Gemini API ko call karna
+        async function callGemini(userPrompt, systemPrompt) {
+            setLoading(true, "Gemini is thinking...");
+            hideAIStatus();
+
             try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                    console.log("Signed in with custom token.");
-                } else if (!auth.currentUser) {
-                    await signInAnonymously(auth);
-                    console.log("Signed in anonymously.");
+                const payload = {
+                    contents: [{ parts: [{ text: userPrompt }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                    tools: [{ "google_search": {} }], // Google Search enable karna
+                };
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API call failed: ${response.statusText}`);
                 }
+                
+                const result = await response.json();
+                const modelText = result.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I could not generate a response.";
+                
+                return modelText;
+
             } catch (error) {
-                console.error("Authentication Error:", error);
+                console.error("Gemini API call error:", error);
+                // Simple error message return karein
+                return `Error: Failed to connect to AI. (${error.message.substring(0, 50)}...)`;
+            } finally {
+                setLoading(false, "Ready.");
             }
         }
-        
-        // Start sign-in when the window loads
-        window.addEventListener('load', handleSignIn);
-    </script>
 
-    <!-- 4. Your Application Code (React JSX) -->
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
-        const db = window.db;
-        const auth = window.auth;
-        const appId = window.appId;
-        const addDoc = window.addDoc;
-        const collection = window.collection;
-        const query = window.query;
-        const orderBy = window.orderBy;
-        const onSnapshot = window.onSnapshot;
-        const serverTimestamp = window.serverTimestamp;
-        const onAuthStateChanged = window.onAuthStateChanged;
-        const signInAnonymously = window.signInAnonymously;
-        const signInWithCustomToken = window.signInWithCustomToken;
-        const MODEL_NAME = window.MODEL_NAME;
-        const apiKey = window.apiKey;
-
-        // --- Utility Functions for Gemini API ---
-
-        // Function to make API calls to Gemini
-        async function callGeminiAPI(fullPrompt, systemInstruction) {
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
+        // Function: Chat UI mein message display karna
+        function displayMessage(message) {
+            const messageElement = document.createElement('div');
+            // Message role ke hisaab se styling adjust karna
+            messageElement.classList.add('flex', 'flex-col', message.uid === userId ? 'items-end' : 'items-start');
             
-            const payload = {
-                contents: [{ parts: [{ text: fullPrompt }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] },
-            };
+            // Timestamp format karna
+            const timestampText = message.timestamp?.toDate ? 
+                new Date(message.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 
+                '';
 
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            // User ka display naam
+            const userDisplayName = message.displayName || (message.uid === userId ? 'You' : 'Guest');
 
-            if (!response.ok) {
-                throw new Error(`API call failed: ${response.statusText}`);
-            }
-
-            const result = await response.json();
-            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-            return text || "Error: Could not generate response.";
+            messageElement.innerHTML = `
+                <div class="message ${message.uid === userId ? 'message-outgoing' : 'message-incoming'} relative">
+                    <p class="text-xs font-semibold mb-1 opacity-80 ${message.uid === userId ? 'text-indigo-200' : 'text-gray-600'}">${userDisplayName}</p>
+                    <p class="${message.uid === userId ? 'text-white' : 'text-gray-800'}">${message.text}</p>
+                    <div class="text-xs mt-1 text-right ${message.uid === userId ? 'text-indigo-200' : 'text-gray-500'}">${timestampText}</div>
+                    
+                    ${message.uid === userId ? `
+                        <div class="flex mt-1 space-x-2 justify-end">
+                            <button data-text="${message.text.replace(/"/g, '&quot;')}" class="ai-button text-xs font-medium text-gray-600 hover:text-indigo-600 bg-gray-200 hover:bg-gray-300 rounded px-2 py-1 transition duration-150" data-feature="Summarize">
+                                Summarize
+                            </button>
+                            <button data-text="${message.text.replace(/"/g, '&quot;')}" class="ai-button text-xs font-medium text-gray-600 hover:text-indigo-600 bg-gray-200 hover:bg-gray-300 rounded px-2 py-1 transition duration-150" data-feature="Tone Check">
+                                Tone Check
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            messagesContainer.appendChild(messageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight; 
         }
 
-        // Function to handle AI feature calls
-        const handleAIFeature = async (messageText, feature) => {
+        // Function: AI Feature Handler (Summarize/Tone Check)
+        async function handleAIFeature(messageText, feature) {
             const systemPrompt = feature === 'Summarize' 
                 ? "You are a concise summarization expert. Summarize the user's message in one short sentence."
-                : "You are an expert on tone. Analyze the following message and state its overall tone (e.g., serious, playful, urgent) in a single phrase.";
+                : "You are an expert on tone. Analyze the following message and state its overall tone (e.g., serious, playful, urgent) in a single, short phrase.";
             
-            const fullPrompt = `Message: "${messageText}"`;
+            const fullPrompt = `Message to analyze: "${messageText}"`;
             
-            const statusBox = document.getElementById('ai-status-box');
-            statusBox.innerHTML = `<span class="text-indigo-600 font-semibold">${feature}ing... Please wait.</span>`;
+            // Status box update
+            aiStatusBox.classList.remove('hidden', 'bg-red-50', 'border-red-200');
+            aiStatusBox.classList.add('bg-blue-50', 'border-blue-200');
+            aiResultContent.innerHTML = `<span class="text-blue-700 font-semibold">${feature}ing... Please wait.</span>`;
             
-            try {
-                const resultText = await callGeminiAPI(fullPrompt, systemPrompt);
-                
-                statusBox.innerHTML = `
-                    <div class="p-3 bg-indigo-50 border border-indigo-200 rounded-lg shadow-sm">
-                        <p class="font-semibold text-indigo-700">${feature} Result:</p>
-                        <p class="text-sm text-gray-800 mt-1">${resultText}</p>
-                    </div>
-                `;
-            } catch (error) {
-                console.error(`Gemini ${feature} Error:`, error);
-                statusBox.innerHTML = `<span class="text-red-600">AI Error: Check console for details.</span>`;
+            const resultText = await callGemini(fullPrompt, systemPrompt);
+
+            // Final status box update
+            aiStatusBox.classList.remove('bg-blue-50', 'border-blue-200', 'bg-red-50', 'border-red-200', 'bg-green-50', 'border-green-200');
+            if (resultText.startsWith("Error:")) {
+                 aiStatusBox.classList.add('bg-red-50', 'border-red-200');
+            } else {
+                 aiStatusBox.classList.add('bg-green-50', 'border-green-200');
             }
-        };
-
-        // --- Sub-Components ---
-
-        function ChatMessage({ msg, isCurrentUser, onAIFeature }) {
-            const [showActions, setShowActions] = useState(false);
-
-            const timestampFormatted = msg.timestamp?.toDate 
-                ? new Date(msg.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) 
-                : '...';
-
-            return (
-                <div 
-                    className={`flex mb-4 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
-                    onMouseEnter={() => setShowActions(true)}
-                    onMouseLeave={() => setShowActions(false)}
-                    onClick={() => setShowActions(!showActions)} // for touch devices
-                >
-                    <div className="flex flex-col">
-                        <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-xl shadow-lg relative ${
-                            isCurrentUser 
-                                ? 'bg-indigo-600 text-white rounded-br-none' 
-                                : 'bg-white text-gray-800 rounded-tl-none border border-gray-200'
-                        }`}>
-                            <p className="font-semibold text-xs mb-1 opacity-70">
-                                {msg.displayName || `Guest-${msg.uid.substring(0, 4)}`}
-                            </p>
-                            <p>{msg.text}</p>
-                            <span className={`text-xs mt-1 block text-right opacity-60 ${isCurrentUser ? 'text-indigo-200' : 'text-gray-500'}`}>
-                                {timestampFormatted}
-                            </span>
-                        </div>
-                        
-                        {/* AI Actions Section */}
-                        {(showActions || isCurrentUser) && (
-                            <div className="flex mt-1 space-x-2 text-xs">
-                                <button 
-                                    className="text-gray-600 hover:text-indigo-600 font-medium transition duration-150 p-1 rounded-md bg-gray-100"
-                                    onClick={() => onAIFeature(msg.text, 'Summarize')}
-                                    title="Summarize message using Gemini"
-                                >
-                                    Summarize
-                                </button>
-                                <button 
-                                    className="text-gray-600 hover:text-indigo-600 font-medium transition duration-150 p-1 rounded-md bg-gray-100"
-                                    onClick={() => onAIFeature(msg.text, 'Tone Check')}
-                                    title="Check the tone using Gemini"
-                                >
-                                    Tone Check
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
+            
+            aiResultContent.innerHTML = resultText;
         }
 
-        // --- Main Chat Component ---
-        function App() {
-            const [messages, setMessages] = useState([]);
-            const [input, setInput] = useState('');
-            const [user, setUser] = useState(null);
-            const messagesEndRef = useRef(null);
-            const [authStatus, setAuthStatus] = useState("Authenticating...");
+        // Function: Firestore se real-time messages ko sunna
+        function setupChatListener() {
+            if (!db || !userId) return;
 
-            const scrollToBottom = () => {
-                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-            };
+            // Public chat data path: /artifacts/{appId}/public/data/messages
+            const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
+            const q = query(chatRef, orderBy('timestamp', 'asc'));
 
-            // 1. Authentication Listener (Handles user state change)
-            useEffect(() => {
-                if (!auth) return;
+            // Real-time listener
+            onSnapshot(q, (snapshot) => {
+                messagesContainer.innerHTML = ''; 
+                document.getElementById('initial-msg').style.display = 'none';
 
-                const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-                    if (currentUser) {
-                        setUser(currentUser);
-                        setAuthStatus(`Signed in as: Guest-${currentUser.uid.substring(0, 4)}`);
+                snapshot.forEach(doc => {
+                    const message = doc.data();
+                    displayMessage(message);
+                });
+
+                // AI Buttons ke liye event listeners attach karna
+                document.querySelectorAll('.ai-button').forEach(button => {
+                    button.onclick = (e) => {
+                        e.stopPropagation(); 
+                        const text = button.getAttribute('data-text');
+                        const feature = button.getAttribute('data-feature');
+                        handleAIFeature(text, feature);
+                    };
+                });
+
+                if (snapshot.empty) {
+                    messagesContainer.innerHTML = '<p class="text-center text-gray-500 my-4">Start the conversation!</p>';
+                }
+            }, (error) => {
+                console.error("Error listening to messages: ", error);
+                authStatusElement.textContent = `Chat Error: ${error.message.substring(0, 50)}...`;
+            });
+        }
+
+        // Function: Message ko Firestore mein save karna
+        async function saveMessage(text) {
+            if (!db || !userId) {
+                console.error("Database or User ID not available.");
+                return;
+            }
+            const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
+            await addDoc(chatRef, {
+                text: text,
+                uid: userId, // User ID store karna zaroori hai
+                displayName: `Guest-${userId.substring(0, 4)}`, // Simple Guest Name
+                timestamp: serverTimestamp()
+            });
+        }
+
+        // --- Initialization and Event Handlers ---
+
+        async function initializeFirebase() {
+            if (Object.keys(firebaseConfig).length === 0) {
+                 authStatusElement.textContent = "Error: Firebase configuration missing!";
+                 setLoading(false);
+                 return;
+            }
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // Authentication state change listener setup karna
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        // User signed in hai
+                        userId = user.uid;
+                        authStatusElement.textContent = `Signed in as User ID: ${userId.substring(0, 10)}...`;
+                        isAuthReady = true;
+                        // Loading stop karke input enable karna
+                        setLoading(false, "Ready."); 
+                        setupChatListener(); 
                     } else {
-                        setUser(null);
-                        // Sign-in logic is handled by the global handleSignIn function in the module script
-                        setAuthStatus("Authenticating...");
+                        // User signed out hai, sign-in process shuru karein
+                         authStatusElement.textContent = "Authenticating...";
+                         isAuthReady = false;
+                         setLoading(true, "Signing in...");
+                        
+                        // Custom Token ya Anonymous sign-in
+                        try {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                        } catch (signError) {
+                            authStatusElement.textContent = `Auth Failed: ${signError.message.substring(0, 50)}...`;
+                            setLoading(false);
+                            console.error("Sign-in failed:", signError);
+                        }
                     }
                 });
-                return unsubscribe;
-            }, []);
 
-            // 2. Real-time Firestore Listener
-            useEffect(() => {
-                if (!user || !db || !appId) return;
-
-                const messagesCollectionRef = collection(db, `artifacts/${appId}/public/data/messages`);
-                const q = query(messagesCollectionRef, orderBy('timestamp', 'asc'));
-
-                const unsubscribe = onSnapshot(q, (snapshot) => {
-                    const newMessages = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
-                    setMessages(newMessages);
-                }, error => {
-                    console.error("Error fetching chat messages:", error);
-                    alert("Error fetching chat messages. Check console.");
-                });
-
-                return unsubscribe; 
-            }, [user]);
-
-            // 3. Scroll after messages are loaded
-            useEffect(scrollToBottom, [messages]);
-
-            // Function to send a message
-            const sendMessage = async (e) => {
-                e.preventDefault();
-                if (input.trim() === '' || !user) return;
-                
-                try {
-                    await addDoc(collection(db, `artifacts/${appId}/public/data/messages`), {
-                        text: input,
-                        timestamp: serverTimestamp(),
-                        uid: user.uid,
-                        displayName: `Guest-${user.uid.substring(0, 4)}`,
-                    });
-                    setInput('');
-                } catch (error) {
-                    console.error("Error sending message:", error);
-                    alert("Error sending message. Check console.");
-                }
-            };
-            
-            return (
-                <div className="flex flex-col h-screen bg-gray-100 font-sans">
-                    
-                    {/* Header */}
-                    <header className="fixed top-0 left-0 right-0 p-4 bg-white shadow-md z-20">
-                        <h1 className="text-2xl font-bold text-indigo-600">
-                            Private Chat with Gemini AI
-                        </h1>
-                        <p className="text-sm text-gray-500 mt-1" id="auth-status">
-                            {authStatus}
-                        </p>
-                    </header>
-
-                    {/* AI Status Box */}
-                    <div id="ai-status-box" className="fixed top-24 left-0 right-0 p-4 z-10">
-                        {/* AI results will appear here */}
-                    </div>
-            
-                    {/* Messages Area (pt-32 to account for header and AI status box) */}
-                    <main className="flex-1 overflow-y-auto pt-40 pb-20 p-4 chat-container md:pt-36">
-                        {messages.length === 0 && user && (
-                            <p className="text-center text-gray-500 mt-10">Start the conversation!</p>
-                        )}
-                        {messages.map((msg) => (
-                            <ChatMessage 
-                                key={msg.id}
-                                msg={msg}
-                                isCurrentUser={msg.uid === user?.uid}
-                                onAIFeature={handleAIFeature}
-                            />
-                        ))}
-                        <div ref={messagesEndRef} />
-                    </main>
-            
-                    {/* Input Form */}
-                    <footer className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 z-20">
-                        <form onSubmit={sendMessage} className="flex space-x-2">
-                            <input
-                                type="text"
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                placeholder={user ? "Type a message..." : "Waiting for authentication..."}
-                                className="flex-1 p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition duration-150"
-                                disabled={!user}
-                            />
-                            <button
-                                type="submit"
-                                className={`p-3 rounded-xl text-white font-semibold transition duration-150 shadow-lg ${
-                                    user && input.trim() ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-400 cursor-not-allowed'
-                                }`}
-                                disabled={!input.trim() || !user}
-                            >
-                                Send
-                            </button>
-                        </form>
-                    </footer>
-                </div>
-            );
+            } catch (error) {
+                console.error("Firebase Initialization Error:", error);
+                authStatusElement.textContent = `Initialization Error: ${error.message}`;
+                setLoading(false);
+            }
         }
-        
-        // Render the main component into the root element
-        ReactDOM.render(<App />, document.getElementById('root'));
+
+        async function handleSend() {
+            const userText = messageInput.value.trim();
+            // Agar input khali ho ya auth ready na ho to return kar dein
+            if (userText === "" || !isAuthReady) return;
+
+            messageInput.value = '';
+            sendButton.disabled = true; 
+
+            try {
+                // Message save karna Firestore mein
+                await saveMessage(userText);
+            } catch (error) {
+                console.error("Send message error:", error);
+                authStatusElement.textContent = `Error sending: ${error.message.substring(0, 40)}...`;
+            } finally {
+                // Button ko dobara enable kar dein
+                sendButton.disabled = false;
+            }
+        }
+
+        // Event Listeners ko Attach karein
+        sendButton.addEventListener('click', handleSend);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault(); 
+                handleSend();
+            }
+        });
+
+        // App ko shuru karein jab window load ho jaaye
+        window.onload = () => {
+            // Initial loading state set karein
+            setLoading(true, "Connecting to Firebase...");
+            initializeFirebase();
+        };
+
     </script>
 </body>
 </html>
-
