@@ -1,436 +1,652 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini-Powered Chat</title>
+    <title>सीक्रेट चैट ऐप</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        // Tailwind configuration: Inter font ko default rakha gaya hai
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                },
-            }
-        }
-    </script>
-    <!-- FontAwesome is not strictly necessary but kept for potential icons -->
-    <!-- <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script> -->
+    <!-- Phosphor Icons for UI elements -->
+    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
     <style>
-        /* Custom CSS */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-        }
-        .chat-container {
-            max-width: 700px;
-            margin: 20px auto;
-            min-height: 85vh; /* Thoda zyada height responsive look ke liye */
-            display: flex;
-            flex-direction: column;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15); /* Thoda gehra shadow */
-            overflow: hidden;
-            background-color: white;
-        }
-        .message-area {
-            flex-grow: 1;
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+        /* Custom scrollbar for message area */
+        #messages {
+            max-height: 70vh;
             overflow-y: auto;
-            padding: 1rem;
-            display: flex; /* Flexbox for dynamic message positioning */
-            flex-direction: column;
+            display: flex;
+            flex-direction: column-reverse; /* New messages appear at bottom */
         }
-        /* Mobile-first adjustments */
-        @media (max-width: 640px) {
-            .chat-container {
-                margin: 0;
-                min-height: 100vh;
-                border-radius: 0;
-            }
-        }
-        .message {
-            max-width: 90%; /* Mobile ke liye zyada width */
-            padding: 10px 15px;
-            border-radius: 16px;
-            margin-bottom: 12px;
-            word-wrap: break-word;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        .message-incoming {
-            background-color: #e5e7eb; /* Halka grey */
-            align-self: flex-start;
-            border-bottom-left-radius: 4px;
-        }
-        .message-outgoing {
-            background-color: #4338CA; /* Deep Indigo 700 */
+        /* Custom styles for messages */
+        .master-msg {
+            background-color: #2563eb; /* Blue for Master */
             color: white;
-            align-self: flex-end;
             border-bottom-right-radius: 4px;
         }
-        .loading-overlay {
-            z-index: 1000;
-            background-color: rgba(255, 255, 255, 0.95);
+        .client-msg {
+            background-color: #fca5a5; /* Red/Pink for Client */
+            color: #450a0a;
+            border-bottom-left-radius: 4px;
+        }
+        .message-row {
+            display: flex;
+            margin-bottom: 8px;
+        }
+        .master-row { justify-content: flex-end; }
+        .client-row { justify-content: flex-start; }
+
+        /* Animation for delete */
+        .deleting {
+            opacity: 0.5;
+            transform: scale(0.98);
+            transition: opacity 0.5s ease, transform 0.5s ease;
         }
     </style>
 </head>
-<body class="p-4 md:p-0">
+<body class="p-4 md:p-8 flex items-center justify-center min-h-screen">
 
-    <div id="loadingOverlay" class="fixed inset-0 loading-overlay hidden">
-        <div class="flex flex-col items-center justify-center h-full">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-indigo-600"></div>
-            <p id="loading-text" class="mt-4 text-lg font-semibold text-indigo-600">Authenticating...</p>
-        </div>
-    </div>
+    <!-- Main Container -->
+    <div id="main-container" class="w-full max-w-lg bg-white shadow-2xl rounded-xl p-6 md:p-8">
 
-    <div class="chat-container">
-        <header class="p-4 border-b border-gray-200 bg-indigo-50 flex justify-between items-center">
-            <h1 class="text-xl md:text-2xl font-bold text-indigo-700">Gemini Chat</h1>
-            <p id="authStatus" class="text-xs text-gray-500 mt-1">Authenticating...</p>
+        <header class="flex justify-between items-center mb-6 border-b pb-4">
+            <h1 class="text-3xl font-extrabold text-gray-800">सीक्रेट चैट</h1>
+            <div class="flex items-center space-x-3">
+                <span id="user-role-display" class="font-bold text-lg text-indigo-600"></span>
+                <button id="admin-settings-btn" title="एडमिन सेटिंग्स" class="hidden p-2 text-gray-600 hover:text-indigo-600 transition duration-150">
+                    <i class="ph-fill ph-gear text-2xl"></i>
+                </button>
+                <button id="logout-btn" title="लॉगआउट" class="p-2 text-gray-600 hover:text-red-600 transition duration-150">
+                    <i class="ph-fill ph-sign-out text-2xl"></i>
+                </button>
+            </div>
         </header>
 
-        <div id="messages" class="message-area">
-            <p id="initial-msg" class="text-center text-gray-400 my-4">Waiting for connection...</p>
-        </div>
-        
-        <!-- AI Status Box to show Summarize/Tone Check results -->
-        <div id="ai-status-box" class="p-3 bg-yellow-50 border-t border-yellow-200 hidden transition-all duration-300">
-            <p class="font-semibold text-yellow-800">AI Result:</p>
-            <p id="ai-result-content" class="text-sm text-gray-700 mt-1"></p>
+        <!-- Loading Indicator -->
+        <div id="loading-screen" class="text-center p-10 hidden">
+            <i class="ph-bold ph-spinner-gap animate-spin text-4xl text-indigo-600"></i>
+            <p class="mt-4 text-gray-600 font-semibold">ऐप लोड हो रहा है...</p>
         </div>
 
-        <div class="p-4 border-t border-gray-200 bg-white flex items-center space-x-2">
-            <input type="text" id="messageInput" placeholder="Type a message..." 
-                   class="flex-1 p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-150" disabled>
-            <button id="sendButton" class="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-semibold transition duration-150 shadow-lg disabled:bg-indigo-400" disabled>
-                Send
+        <!-- Login Screen -->
+        <div id="login-screen" class="hidden p-4">
+            <h2 id="login-title" class="text-2xl font-semibold mb-6 text-center text-gray-700">मास्टर लॉगिन</h2>
+            <form id="login-form" class="space-y-4">
+                <input type="text" id="login-username" placeholder="यूज़रनेम" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                <input type="password" id="login-password" placeholder="पासवर्ड" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition duration-150">लॉग इन करें</button>
+            </form>
+            <button id="switch-role-btn" class="w-full mt-4 py-2 text-sm text-indigo-600 hover:text-indigo-800 transition duration-150">
+                क्लाइंट लॉगिन पर स्विच करें
             </button>
+            <p id="auth-status" class="mt-4 text-center text-sm text-red-500"></p>
         </div>
+
+        <!-- Chat Screen -->
+        <div id="chat-screen" class="hidden">
+            <!-- User ID Display -->
+            <div class="mb-4 p-2 bg-gray-100 rounded-lg text-sm text-gray-600 break-all">
+                <span class="font-semibold">यूआईडी (UID):</span> <span id="current-uid"></span>
+            </div>
+
+            <!-- Messages Area -->
+            <div id="messages" class="p-3 bg-gray-50 rounded-xl border border-gray-200">
+                <!-- Messages will be loaded here -->
+                <p id="no-messages" class="text-center text-gray-400 italic">कोई संदेश नहीं...</p>
+            </div>
+
+            <!-- Input Form -->
+            <form id="message-form" class="mt-6 flex space-x-2">
+                <input type="text" id="message-input" placeholder="अपना संदेश टाइप करें..." required class="flex-grow p-3 border border-indigo-300 rounded-xl focus:ring-2 focus:ring-indigo-500">
+                <button type="submit" class="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition duration-150 active:scale-95">
+                    <i class="ph-fill ph-paper-plane-right text-xl"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- Admin Settings Modal (Hidden by default) -->
+        <div id="admin-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl w-full max-w-md p-6 shadow-2xl">
+                <h3 class="text-2xl font-bold mb-4 border-b pb-2">एडमिन क्रेडेंशियल सेटिंग्स</h3>
+                <form id="admin-form" class="space-y-4">
+                    <p class="text-sm text-gray-500">मास्टर और क्लाइंट के लॉगिन विवरण बदलें।</p>
+                    
+                    <!-- Master Creds -->
+                    <div class="bg-indigo-50 p-4 rounded-lg space-y-3">
+                        <label class="block font-semibold text-indigo-700">मास्टर क्रेडेंशियल्स</label>
+                        <input type="text" id="master-user" placeholder="मास्टर यूज़रनेम" required class="w-full p-2 border rounded-lg">
+                        <input type="password" id="master-pass" placeholder="मास्टर पासवर्ड" required class="w-full p-2 border rounded-lg">
+                    </div>
+
+                    <!-- Client Creds -->
+                    <div class="bg-red-50 p-4 rounded-lg space-y-3">
+                        <label class="block font-semibold text-red-700">क्लाइंट क्रेडेंशियल्स</label>
+                        <input type="text" id="client-user" placeholder="क्लाइंट यूज़रनेम" required class="w-full p-2 border rounded-lg">
+                        <input type="password" id="client-pass" placeholder="क्लाइंट पासवर्ड" required class="w-full p-2 border rounded-lg">
+                    </div>
+                    
+                    <button type="submit" class="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition duration-150">सेव क्रेडेंशियल्स</button>
+                    <button type="button" id="close-admin-btn" class="w-full py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-100 transition duration-150">बंद करें</button>
+                </form>
+                <p id="admin-status" class="mt-3 text-center text-sm font-semibold"></p>
+            </div>
+        </div>
+        
+        <!-- Custom Alert/Modal (For delete confirmation) -->
+        <div id="custom-alert" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl w-full max-w-xs p-6 shadow-2xl text-center">
+                <h4 id="alert-title" class="text-xl font-bold mb-3 text-gray-800">पुष्टि करें</h4>
+                <p id="alert-message" class="mb-5 text-gray-600">क्या आप वाकई इस संदेश को हटाना चाहते हैं?</p>
+                <div class="flex justify-around space-x-3">
+                    <button id="alert-confirm" class="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-150">हाँ</button>
+                    <button id="alert-cancel" class="flex-1 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition duration-150">नहीं</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
+    <!-- Firebase Imports -->
     <script type="module">
-        // --- Firebase Modules Import (Updated to 12.5.0) ---
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
-        import { getFirestore, addDoc, onSnapshot, collection, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+        // Firebase Setup
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, orderBy, addDoc, deleteDoc, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Configuration & Global State ---
-        let db, auth;
-        let userId = null;
-        let isAuthReady = false;
-        
-        // Canvas environment variables ko safely access karein
+        // Global Variables
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // User dwara di gayi Firebase Configuration ko seedhe istemaal karein
-        const firebaseConfig = {
-            apiKey: "AIzaSyBmImrvVVCJ5E1yAZAI4NXSweEg__hqF94",
-            authDomain: "private-chat-14deb.firebaseapp.com",
-            projectId: "private-chat-14deb",
-            storageBucket: "private-chat-14deb.firebasestorage.app",
-            messagingSenderId: "255060970461",
-            appId: "1:255060970461:web:e6dd31ce5952334ae64434",
-            measurementId: "G-QWDK17SMY9"
+        
+        // Fixed IDs for Role Assignment (as requested)
+        const MASTER_ID = 'MASTER-USER-FIXED-ID';
+        const CLIENT_ID = 'CLIENT-USER-FIXED-ID';
+        
+        // Master & Client Login Credentials (Default)
+        const DEFAULT_CREDS = {
+            master_username: 'master',
+            master_password: '12345',
+            client_username: 'client',
+            client_password: '54321',
         };
+        
+        // App State
+        let db, auth;
+        let currentUserId = null;
+        let currentUserRole = null; // 'Master' or 'Client'
+        let currentCredentials = null;
+        let isAuthReady = false;
+        let loginRole = 'Master'; // Tracks which role is currently trying to log in
 
+        // Auto-Delete Time in milliseconds (e.g., 30 seconds) - Only applies to Client messages
+        const AUTO_DELETE_TIME_MS = 30000;
 
-        // Gemini API configuration
-        const apiKey = ""; 
-        const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
+        // DOM Elements
+        const loadingScreen = document.getElementById('loading-screen');
+        const loginScreen = document.getElementById('login-screen');
+        const chatScreen = document.getElementById('chat-screen');
+        const loginTitle = document.getElementById('login-title');
+        const loginForm = document.getElementById('login-form');
+        const switchRoleBtn = document.getElementById('switch-role-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const adminSettingsBtn = document.getElementById('admin-settings-btn');
+        const messagesEl = document.getElementById('messages');
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+        const userRoleDisplay = document.getElementById('user-role-display');
+        const currentUidEl = document.getElementById('current-uid');
+        const authStatusEl = document.getElementById('auth-status');
+        
+        // Admin Modal Elements
+        const adminModal = document.getElementById('admin-modal');
+        const adminForm = document.getElementById('admin-form');
+        const closeAdminBtn = document.getElementById('close-admin-btn');
+        const adminStatusEl = document.getElementById('admin-status');
+        
+        // Custom Alert/Modal Elements
+        const customAlert = document.getElementById('custom-alert');
+        const alertConfirmBtn = document.getElementById('alert-confirm');
+        const alertCancelBtn = document.getElementById('alert-cancel');
+        const alertMessageEl = document.getElementById('alert-message');
 
-        // UI Elements
-        const messagesContainer = document.getElementById('messages');
-        const messageInput = document.getElementById('messageInput');
-        const sendButton = document.getElementById('sendButton');
-        const authStatusElement = document.getElementById('authStatus');
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        const loadingText = document.getElementById('loading-text');
-        const aiStatusBox = document.getElementById('ai-status-box');
-        const aiResultContent = document.getElementById('ai-result-content');
+        // --- Firebase/Firestore References ---
+        const getConfigDocRef = () => doc(db, 'artifacts', appId, 'public', 'data', 'config', 'credentials');
+        const getChatCollectionRef = () => collection(db, 'artifacts', appId, 'public', 'data', 'chat', 'messages');
 
         // --- Utility Functions ---
 
-        // Function: Loading state ko manage karna
-        function setLoading(isLoading, text = "Processing...") {
-            loadingText.textContent = isLoading ? text : "Authenticating...";
-            loadingOverlay.classList.toggle('hidden', !isLoading);
-            // Input aur button ko enable sirf tab karein jab auth ready ho aur loading na ho
-            const enableInput = isAuthReady && !isLoading;
-            messageInput.disabled = !enableInput;
-            sendButton.disabled = !enableInput;
-        }
-        
-        // Function: AI Status box ko hide karna
-        function hideAIStatus() {
-            aiStatusBox.classList.add('hidden');
-        }
+        /**
+         * Shows the custom alert modal for confirmation.
+         * @param {string} message - The message to display.
+         * @param {function} onConfirm - Callback function on confirmation.
+         */
+        function showCustomAlert(message, onConfirm) {
+            alertMessageEl.textContent = message;
+            customAlert.classList.remove('hidden');
 
-        // --- Core Logic Functions ---
-
-        // Function: Exponential Backoff ke saath Gemini API ko call karna
-        async function callGemini(userPrompt, systemPrompt, retries = 3) {
-            setLoading(true, "Gemini is thinking...");
-            hideAIStatus();
-
-            const payload = {
-                contents: [{ parts: [{ text: userPrompt }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-                tools: [{ "google_search": {} }], // Google Search enable karna
+            const handleConfirm = () => {
+                customAlert.classList.add('hidden');
+                onConfirm();
+                alertConfirmBtn.removeEventListener('click', handleConfirm);
+                alertCancelBtn.removeEventListener('click', handleCancel);
             };
 
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+            const handleCancel = () => {
+                customAlert.classList.add('hidden');
+                alertConfirmBtn.removeEventListener('click', handleConfirm);
+                alertCancelBtn.removeEventListener('click', handleCancel);
+            };
 
-                    if (response.status === 429 && i < retries - 1) {
-                        // Too Many Requests (Rate Limit), wait and retry
-                        const delay = Math.pow(2, i) * 1000; // 1s, 2s, 4s
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        continue;
-                    }
+            alertConfirmBtn.addEventListener('click', handleConfirm);
+            alertCancelBtn.addEventListener('click', handleCancel);
+        }
 
-                    if (!response.ok) {
-                        throw new Error(`API call failed with status: ${response.status}`);
-                    }
-                    
-                    const result = await response.json();
-                    const modelText = result.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I could not generate a response.";
-                    
-                    return modelText;
-
-                } catch (error) {
-                    console.error(`Gemini API call error (Attempt ${i + 1}):`, error);
-                    if (i === retries - 1) {
-                        return `Error: Failed to connect to AI after multiple attempts. (${error.message.substring(0, 50)}...)`;
-                    }
-                    const delay = Math.pow(2, i) * 1000;
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                } finally {
-                     if (i === retries - 1) {
-                        // Last attempt ke baad loading stop karna
-                        setLoading(false, "Ready.");
-                    }
-                }
+        /**
+         * Toggles between the three main screens.
+         * @param {string} screenName - 'login', 'chat', or 'admin'
+         */
+        function showScreen(screenName) {
+            loadingScreen.classList.add('hidden');
+            loginScreen.classList.add('hidden');
+            chatScreen.classList.add('hidden');
+            adminModal.classList.add('hidden');
+            
+            if (screenName === 'login') {
+                loginScreen.classList.remove('hidden');
+            } else if (screenName === 'chat') {
+                chatScreen.classList.remove('hidden');
+            } else if (screenName === 'admin') {
+                adminModal.classList.remove('hidden');
             }
         }
-
-        // Function: Chat UI mein message display karna
-        function displayMessage(message) {
-            const messageElement = document.createElement('div');
-            // Message role ke hisaab se styling adjust karna
-            messageElement.classList.add('flex', 'flex-col', message.uid === userId ? 'items-end' : 'items-start');
-            
-            // Timestamp format karna
-            const timestampDate = message.timestamp?.toDate ? message.timestamp.toDate() : new Date();
-            const timestampText = timestampDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-
-            // User ka display naam
-            const userDisplayName = message.displayName || (message.uid === userId ? 'You' : `Guest-${message.uid.substring(0, 4)}`);
-
-            messageElement.innerHTML = `
-                <div class="message ${message.uid === userId ? 'message-outgoing' : 'message-incoming'} relative">
-                    <p class="text-xs font-semibold mb-1 opacity-80 ${message.uid === userId ? 'text-indigo-200' : 'text-gray-600'}">${userDisplayName}</p>
-                    <p class="${message.uid === userId ? 'text-white' : 'text-gray-800'}">${message.text}</p>
-                    <div class="text-xs mt-1 text-right ${message.uid === userId ? 'text-indigo-200' : 'text-gray-500'}">${timestampText}</div>
-                    
-                    ${message.uid === userId ? `
-                        <div class="flex mt-2 space-x-2 justify-end pt-1 border-t border-indigo-500/30">
-                            <button data-text="${message.text.replace(/"/g, '&quot;')}" class="ai-button text-xs font-medium text-gray-800 hover:text-indigo-900 bg-white hover:bg-gray-100 rounded-lg px-2 py-1 shadow-md transition duration-150" data-feature="Summarize">
-                                <span class="text-indigo-600 font-bold">AI:</span> Summarize
-                            </button>
-                            <button data-text="${message.text.replace(/"/g, '&quot;')}" class="ai-button text-xs font-medium text-gray-800 hover:text-indigo-900 bg-white hover:bg-gray-100 rounded-lg px-2 py-1 shadow-md transition duration-150" data-feature="Tone Check">
-                                <span class="text-indigo-600 font-bold">AI:</span> Tone Check
-                            </button>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-            messagesContainer.appendChild(messageElement);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight; 
-        }
-
-        // Function: AI Feature Handler (Summarize/Tone Check)
-        async function handleAIFeature(messageText, feature) {
-            const systemPrompt = feature === 'Summarize' 
-                ? "You are a concise summarization expert. Summarize the user's message in one short, clear sentence. Do not add any conversational text."
-                : "You are an expert on tone. Analyze the following message and state its overall tone (e.g., serious, playful, urgent) and provide one word describing its sentiment (positive, negative, neutral) in a short, single phrase. Do not add any conversational text.";
-            
-            const fullPrompt = `Message to analyze: "${messageText}"`;
-            
-            // Status box update
-            aiStatusBox.classList.remove('hidden', 'bg-red-50', 'border-red-200', 'bg-green-50', 'border-green-200');
-            aiStatusBox.classList.add('bg-blue-50', 'border-blue-200');
-            aiResultContent.innerHTML = `<span class="text-blue-700 font-semibold">${feature}ing... Please wait.</span>`;
-            
-            const resultText = await callGemini(fullPrompt, systemPrompt);
-
-            // Final status box update
-            aiStatusBox.classList.remove('bg-blue-50', 'border-blue-200');
-            if (resultText.startsWith("Error:")) {
-                 aiStatusBox.classList.add('bg-red-50', 'border-red-200');
-            } else {
-                 aiStatusBox.classList.add('bg-green-50', 'border-green-200');
-            }
-            
-            aiStatusBox.classList.remove('hidden');
-            aiResultContent.innerHTML = `**${feature}**: ${resultText}`;
-        }
-
-        // Function: Firestore se real-time messages ko sunna
-        function setupChatListener() {
-            if (!db || !userId) return;
-
-            // Public chat data path: /artifacts/{appId}/public/data/messages
-            const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
-            // orderBy('timestamp', 'asc') is used here, but for production, Firestore indexes need to be created.
-            const q = query(chatRef, orderBy('timestamp', 'asc'));
-
-            // Real-time listener
-            onSnapshot(q, (snapshot) => {
-                messagesContainer.innerHTML = ''; 
-                document.getElementById('initial-msg').style.display = 'none';
-
-                snapshot.forEach(doc => {
-                    const message = doc.data();
-                    displayMessage(message);
-                });
-
-                // AI Buttons ke liye event listeners attach karna
-                document.querySelectorAll('.ai-button').forEach(button => {
-                    button.onclick = (e) => {
-                        e.stopPropagation(); 
-                        const text = button.getAttribute('data-text');
-                        const feature = button.getAttribute('data-feature');
-                        handleAIFeature(text, feature);
-                    };
-                });
-
-                if (snapshot.empty) {
-                    messagesContainer.innerHTML = '<p class="text-center text-gray-500 my-4">Start the conversation!</p>';
-                }
-            }, (error) => {
-                console.error("Error listening to messages: ", error);
-                authStatusElement.textContent = `Chat Error: ${error.message.substring(0, 50)}...`;
-            });
-        }
-
-        // Function: Message ko Firestore mein save karna
-        async function saveMessage(text) {
-            if (!db || !userId) {
-                console.error("Database or User ID not available.");
-                throw new Error("Cannot send message: Authentication or database connection is not ready.");
-            }
-            const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
-            await addDoc(chatRef, {
-                text: text,
-                uid: userId, // User ID store karna zaroori hai
-                timestamp: serverTimestamp()
-            });
-        }
-
-        // --- Initialization and Event Handlers ---
-
-        async function initializeFirebase() {
-            // Check karein ki configuration empty hai ya nahi (Though hardcoded now, good practice)
-            if (!firebaseConfig || !firebaseConfig.apiKey) {
-                 authStatusElement.textContent = "Error: Firebase configuration missing or invalid!";
-                 setLoading(false);
-                 console.error("Initialization Failed: Firebase config is empty or lacks apiKey.");
-                 return;
-            }
-
+        
+        /**
+         * Fetches login credentials from Firestore or initializes them if not found.
+         */
+        async function fetchAndSetCredentials() {
             try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
+                const docRef = getConfigDocRef();
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    currentCredentials = docSnap.data();
+                    console.log("Credentials fetched from Firestore.");
+                } else {
+                    // Initialize with default credentials
+                    await setDoc(docRef, DEFAULT_CREDS);
+                    currentCredentials = DEFAULT_CREDS;
+                    console.log("Credentials initialized in Firestore.");
+                }
                 
-                // Authentication state change listener setup karna
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        // User signed in hai
-                        userId = user.uid;
-                        authStatusElement.textContent = `User ID: ${userId.substring(0, 10)}... | App ID: ${appId.substring(0, 4)}...`;
-                        isAuthReady = true;
-                        // Loading stop karke input enable karna
-                        setLoading(false, "Ready."); 
-                        setupChatListener(); 
-                    } else {
-                        // User signed out hai, sign-in process shuru karein
-                         authStatusElement.textContent = "Authenticating...";
-                         isAuthReady = false;
-                         setLoading(true, "Signing in...");
-                        
-                        // Custom Token ya Anonymous sign-in
-                        try {
-                            if (initialAuthToken) {
-                                await signInWithCustomToken(auth, initialAuthToken);
-                            } else {
-                                await signInAnonymously(auth);
-                            }
-                        } catch (signError) {
-                            authStatusElement.textContent = `Auth Failed: ${signError.message.substring(0, 50)}...`;
-                            setLoading(false);
-                            console.error("Sign-in failed:", signError);
-                        }
-                    }
-                });
-
+                // Show the login screen after credentials are ready
+                showScreen('login');
             } catch (error) {
-                console.error("Firebase Initialization Error:", error);
-                authStatusElement.textContent = `Initialization Error: ${error.message}`;
-                setLoading(false);
+                console.error("Error fetching/setting credentials:", error);
+                authStatusEl.textContent = "डेटाबेस त्रुटि: क्रेडेंशियल्स लोड नहीं हो पाए।";
             }
         }
 
-        async function handleSend() {
-            const userText = messageInput.value.trim();
-            // Agar input khali ho ya auth ready na ho to return kar dein
-            if (userText === "" || !isAuthReady) return;
+        /**
+         * Handles user login based on credentials.
+         */
+        function handleLogin(event) {
+            event.preventDefault();
+            authStatusEl.textContent = "";
 
-            messageInput.value = '';
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            if (!currentCredentials) {
+                authStatusEl.textContent = "क्रेडेंशियल्स अभी लोड नहीं हुए हैं। कृपया पुनः प्रयास करें।";
+                return;
+            }
+
+            let loginSuccessful = false;
+            let role = null;
+
+            if (loginRole === 'Master' && 
+                username === currentCredentials.master_username && 
+                password === currentCredentials.master_password) {
+                
+                loginSuccessful = true;
+                role = 'Master';
+
+            } else if (loginRole === 'Client' && 
+                       username === currentCredentials.client_username && 
+                       password === currentCredentials.client_password) {
+                
+                loginSuccessful = true;
+                role = 'Client';
+
+            }
+
+            if (loginSuccessful) {
+                // Assign fixed user ID based on role for application logic
+                currentUserId = (role === 'Master' ? MASTER_ID : CLIENT_ID);
+                currentUserRole = role;
+                
+                // Clear form and show chat
+                loginForm.reset();
+                setupChat();
+            } else {
+                authStatusEl.textContent = "अमान्य यूज़रनेम या पासवर्ड।";
+            }
+        }
+
+        /**
+         * Sets up the chat interface after successful login.
+         */
+        function setupChat() {
+            console.log(`User logged in as ${currentUserRole} with fixed ID: ${currentUserId}`);
+            userRoleDisplay.textContent = currentUserRole === 'Master' ? 'मास्टर' : 'क्लाइंट';
+            currentUidEl.textContent = currentUserId;
+
+            // Show admin settings button only for Master
+            if (currentUserRole === 'Master') {
+                adminSettingsBtn.classList.remove('hidden');
+            } else {
+                adminSettingsBtn.classList.add('hidden');
+            }
+
+            showScreen('chat');
+            listenForMessages();
+        }
+
+        /**
+         * Renders all messages in the UI and sets up auto-deletion.
+         * @param {Array<Object>} messages - Array of message documents.
+         */
+        function renderMessages(messages) {
+            messagesEl.innerHTML = '';
             
-            // UI elements ko disable karna for better user experience
-            sendButton.disabled = true; 
-            messageInput.disabled = true;
+            if (messages.length === 0) {
+                messagesEl.innerHTML = '<p id="no-messages" class="text-center text-gray-400 italic">कोई संदेश नहीं...</p>';
+                return;
+            }
+
+            messages.forEach(msg => {
+                const isMaster = msg.userId === MASTER_ID;
+                const isClient = msg.userId === CLIENT_ID;
+                const isCurrentUser = msg.userId === currentUserId;
+                
+                const rowClass = isMaster ? 'master-row' : 'client-row';
+                const msgClass = isMaster ? 'master-msg' : 'client-msg';
+                const senderLabel = isMaster ? 'मास्टर' : 'क्लाइंट';
+                const timeString = msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleTimeString('hi-IN') : 'अभी';
+
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message-row ${rowClass}`;
+                messageDiv.dataset.id = msg.id; // Store Firestore document ID
+
+                let deleteButton = '';
+                // Delete button logic:
+                // 1. Master can delete any message.
+                // 2. Client can only delete their own message (optional, but good control).
+                if (currentUserRole === 'Master' || (currentUserRole === 'Client' && isCurrentUser)) {
+                    deleteButton = `
+                        <button class="delete-btn p-1 ml-2 text-white/70 hover:text-white transition duration-100" 
+                                data-id="${msg.id}" 
+                                title="संदेश हटाएँ">
+                            <i class="ph-fill ph-x text-sm"></i>
+                        </button>
+                    `;
+                }
+                
+                // Master can delete, so give him the full white button. Client deletion is for his own messages.
+                const deleteHtml = (currentUserRole === 'Master' || isCurrentUser) ? deleteButton : '';
+
+                const contentHtml = `
+                    <div class="max-w-[80%] rounded-xl px-4 py-2 shadow-md ${msgClass}">
+                        <div class="flex justify-between items-start">
+                             <span class="font-semibold text-xs opacity-80">${senderLabel}</span>
+                             ${deleteHtml}
+                        </div>
+                        <p class="text-base break-words mt-1">${msg.text}</p>
+                        <span class="block text-right text-[0.6rem] mt-1 opacity-70">${timeString}</span>
+                    </div>
+                `;
+                
+                messageDiv.innerHTML = contentHtml;
+                messagesEl.appendChild(messageDiv);
+
+                // Start auto-delete timer ONLY for Client messages and ONLY if the current user is 'Client'
+                if (currentUserRole === 'Client' && isClient) {
+                    startAutoDeleteTimer(msg);
+                }
+            });
+            
+            // Re-attach delete button listeners
+            messagesEl.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const docId = e.currentTarget.dataset.id;
+                    showCustomAlert("क्या आप वाकई इस संदेश को हटाना चाहते हैं?", () => deleteMessage(docId));
+                });
+            });
+
+            // Scroll to the bottom of the list after rendering, as we use flex-direction: column-reverse
+            messagesEl.scrollTop = 0; 
+        }
+
+        /**
+         * Starts the auto-delete timer for a specific message (Client messages only).
+         * @param {Object} message - The message document object.
+         */
+        function startAutoDeleteTimer(message) {
+            // Check if this message is Client's message
+            if (message.userId !== CLIENT_ID) return; 
+
+            // Calculate time remaining (if timestamp exists)
+            const sentTime = message.timestamp?.toDate ? message.timestamp.toDate().getTime() : Date.now();
+            const timeElapsed = Date.now() - sentTime;
+            const timeRemaining = AUTO_DELETE_TIME_MS - timeElapsed;
+
+            if (timeRemaining <= 0) {
+                console.log(`Deleting expired message: ${message.id}`);
+                // Delete immediately if already expired
+                deleteMessage(message.id);
+                return;
+            }
+
+            console.log(`Starting delete timer for Client message ${message.id}. Deletes in ${timeRemaining / 1000}s`);
+
+            // Use a timeout to delete the message
+            setTimeout(() => {
+                const msgEl = messagesEl.querySelector(`[data-id="${message.id}"]`);
+                if (msgEl) {
+                    // Visually mark for deletion right before final deletion
+                    msgEl.classList.add('deleting');
+                    // A slight delay to allow the animation to show before the Firestore deletion removes it from the screen
+                    setTimeout(() => deleteMessage(message.id), 500); 
+                } else {
+                    // If element is not in DOM (e.g., scrolled out), just delete from Firestore
+                    deleteMessage(message.id);
+                }
+            }, timeRemaining);
+        }
+        
+        /**
+         * Attaches the real-time listener for chat messages.
+         */
+        function listenForMessages() {
+            if (!db || !currentUserId) return;
+
+            const q = query(getChatCollectionRef(), orderBy("timestamp", "desc"));
+
+            // onSnapshot provides real-time updates
+            onSnapshot(q, (snapshot) => {
+                const messages = [];
+                snapshot.forEach((doc) => {
+                    messages.push({ id: doc.id, ...doc.data() });
+                });
+                renderMessages(messages);
+            }, (error) => {
+                console.error("Error listening to messages:", error);
+                messagesEl.innerHTML = `<p class="text-center text-red-500">संदेश लोड नहीं हो पाए: ${error.message}</p>`;
+            });
+        }
+
+        /**
+         * Sends a new message to Firestore.
+         */
+        async function sendMessage(event) {
+            event.preventDefault();
+
+            const text = messageInput.value.trim();
+            if (text === "") return;
 
             try {
-                // Message save karna Firestore mein
-                await saveMessage(userText);
-            } catch (error) {
-                console.error("Send message error:", error);
-                // Auth status mein error dikhana
-                authStatusElement.textContent = `Error sending: ${error.message.substring(0, 40)}...`;
-            } finally {
-                // Button aur Input ko dobara enable kar dein
-                sendButton.disabled = false;
-                messageInput.disabled = false;
+                await addDoc(getChatCollectionRef(), {
+                    text: text,
+                    userId: currentUserId,
+                    timestamp: serverTimestamp()
+                });
+                messageInput.value = ''; // Clear input
+            } catch (e) {
+                console.error("Error sending message: ", e);
+            }
+        }
+        
+        /**
+         * Deletes a message from Firestore.
+         * @param {string} docId - The document ID of the message to delete.
+         */
+        async function deleteMessage(docId) {
+            try {
+                const docRef = doc(getChatCollectionRef(), docId);
+                await deleteDoc(docRef);
+                console.log(`Message ${docId} deleted successfully.`);
+            } catch (e) {
+                console.error("Error deleting message: ", e);
+            }
+        }
+        
+        /**
+         * Saves new credentials to Firestore (Master Admin function).
+         */
+        async function saveAdminCredentials(event) {
+            event.preventDefault();
+            
+            const masterUser = document.getElementById('master-user').value.trim();
+            const masterPass = document.getElementById('master-pass').value;
+            const clientUser = document.getElementById('client-user').value.trim();
+            const clientPass = document.getElementById('client-pass').value;
+            
+            if (!masterUser || !masterPass || !clientUser || !clientPass) {
+                adminStatusEl.textContent = "सभी फ़ील्ड आवश्यक हैं।";
+                adminStatusEl.classList.add('text-red-500');
+                return;
+            }
+
+            try {
+                await setDoc(getConfigDocRef(), {
+                    master_username: masterUser,
+                    master_password: masterPass,
+                    client_username: clientUser,
+                    client_password: clientPass,
+                });
+
+                // Update current runtime credentials
+                currentCredentials = {
+                    master_username: masterUser, master_password: masterPass,
+                    client_username: clientUser, client_password: clientPass
+                };
+
+                adminStatusEl.textContent = "क्रेडेंशियल्स सफलतापूर्वक सेव किए गए!";
+                adminStatusEl.classList.remove('text-red-500');
+                adminStatusEl.classList.add('text-green-600');
+                
+                setTimeout(() => adminModal.classList.add('hidden'), 1500);
+
+            } catch (e) {
+                console.error("Error saving credentials: ", e);
+                adminStatusEl.textContent = "क्रेडेंशियल्स सेव करने में त्रुटि आई।";
+                adminStatusEl.classList.add('text-red-500');
             }
         }
 
-        // Event Listeners ko Attach karein
-        sendButton.addEventListener('click', handleSend);
-        messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault(); 
-                handleSend();
+
+        // --- Initialization and Event Listeners ---
+        
+        /**
+         * Main initialization function for Firebase and Auth.
+         */
+        async function initFirebase() {
+            // Set log level to Debug for better visibility
+            setLogLevel('debug');
+            
+            // Initialize App
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            // Sign in anonymously using the token provided by the canvas environment
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                isAuthReady = true;
+                console.log("Firebase Auth initialized and signed in.");
+            } catch (error) {
+                console.error("Firebase Auth failed:", error);
+                isAuthReady = true;
             }
+            
+            // Fetch credentials before showing the login screen
+            await fetchAndSetCredentials();
+        }
+
+        // --- Event Listeners ---
+
+        loginForm.addEventListener('submit', handleLogin);
+        messageForm.addEventListener('submit', sendMessage);
+        adminForm.addEventListener('submit', saveAdminCredentials);
+        
+        logoutBtn.addEventListener('click', async () => {
+            currentUserRole = null;
+            currentUserId = null;
+            adminSettingsBtn.classList.add('hidden');
+            await signOut(auth); // Sign out the anonymous user
+            await signInAnonymously(auth); // Sign in a new anonymous user for clean slate
+            showScreen('login');
+            loginTitle.textContent = "मास्टर लॉगिन";
+            switchRoleBtn.textContent = "क्लाइंट लॉगिन पर स्विच करें";
+            loginRole = 'Master';
+            authStatusEl.textContent = "आप सफलतापूर्वक लॉग आउट हो गए हैं।";
+        });
+        
+        switchRoleBtn.addEventListener('click', () => {
+            if (loginRole === 'Master') {
+                loginRole = 'Client';
+                loginTitle.textContent = "क्लाइंट लॉगिन";
+                switchRoleBtn.textContent = "मास्टर लॉगिन पर स्विच करें";
+            } else {
+                loginRole = 'Master';
+                loginTitle.textContent = "मास्टर लॉगिन";
+                switchRoleBtn.textContent = "क्लाइंट लॉगिन पर स्विच करें";
+            }
+            loginForm.reset();
+            authStatusEl.textContent = "";
         });
 
-        // App ko shuru karein jab window load ho jaaye
-        window.onload = () => {
-            // Initial loading state set karein
-            setLoading(true, "Connecting to Firebase...");
-            initializeFirebase();
-        };
+        adminSettingsBtn.addEventListener('click', () => {
+            if (currentUserRole !== 'Master' || !currentCredentials) return;
+            
+            // Populate form with current values
+            document.getElementById('master-user').value = currentCredentials.master_username;
+            document.getElementById('master-pass').value = currentCredentials.master_password;
+            document.getElementById('client-user').value = currentCredentials.client_username;
+            document.getElementById('client-pass').value = currentCredentials.client_password;
+            adminStatusEl.textContent = "";
+            adminModal.classList.remove('hidden');
+        });
+        
+        closeAdminBtn.addEventListener('click', () => {
+            adminModal.classList.add('hidden');
+        });
+
+        // Start the application
+        window.onload = initFirebase;
 
     </script>
 </body>
