@@ -3,651 +3,599 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>सीक्रेट चैट ऐप</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Master-Client Private Chat</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Phosphor Icons for UI elements -->
-    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
-        /* Custom scrollbar for message area */
-        #messages {
-            max-height: 70vh;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column-reverse; /* New messages appear at bottom */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
         }
-        /* Custom styles for messages */
-        .master-msg {
-            background-color: #2563eb; /* Blue for Master */
-            color: white;
-            border-bottom-right-radius: 4px;
+        .dark-mode {
+            background-color: #1f2937;
+            color: #f9fafb;
         }
-        .client-msg {
-            background-color: #fca5a5; /* Red/Pink for Client */
-            color: #450a0a;
-            border-bottom-left-radius: 4px;
+        .dark-mode .chat-container {
+            background-color: #374151;
         }
-        .message-row {
-            display: flex;
-            margin-bottom: 8px;
+        .dark-mode .message-incoming {
+            background-color: #4b5563;
+            color: #f9fafb;
         }
-        .master-row { justify-content: flex-end; }
-        .client-row { justify-content: flex-start; }
-
-        /* Animation for delete */
-        .deleting {
-            opacity: 0.5;
-            transform: scale(0.98);
-            transition: opacity 0.5s ease, transform 0.5s ease;
+        .dark-mode .message-outgoing {
+            background-color: #6366f1;
         }
     </style>
 </head>
-<body class="p-4 md:p-8 flex items-center justify-center min-h-screen">
+<body class="bg-gray-100">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white flex items-center justify-center z-50">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+            <p class="mt-4 text-gray-600">Loading...</p>
+        </div>
+    </div>
 
-    <!-- Main Container -->
-    <div id="main-container" class="w-full max-w-lg bg-white shadow-2xl rounded-xl p-6 md:p-8">
+    <!-- Login Screen -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
+            <h1 class="text-2xl font-bold text-center text-indigo-600 mb-2">Private Chat</h1>
+            <p class="text-gray-600 text-center mb-6">Secure Master-Client Communication</p>
+            
+            <div class="flex space-x-2 mb-6">
+                <button id="masterLoginTab" class="flex-1 py-2 px-4 bg-indigo-600 text-white rounded-lg font-semibold">
+                    Master
+                </button>
+                <button id="clientLoginTab" class="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg font-semibold">
+                    Client
+                </button>
+            </div>
 
-        <header class="flex justify-between items-center mb-6 border-b pb-4">
-            <h1 class="text-3xl font-extrabold text-gray-800">सीक्रेट चैट</h1>
-            <div class="flex items-center space-x-3">
-                <span id="user-role-display" class="font-bold text-lg text-indigo-600"></span>
-                <button id="admin-settings-btn" title="एडमिन सेटिंग्स" class="hidden p-2 text-gray-600 hover:text-indigo-600 transition duration-150">
-                    <i class="ph-fill ph-gear text-2xl"></i>
+            <!-- Master Login Form -->
+            <div id="masterLoginForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Master Username</label>
+                    <input type="text" id="masterUsername" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value="master">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Master Password</label>
+                    <input type="password" id="masterPassword" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value="12345">
+                </div>
+                <button id="masterLoginBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-lg font-semibold transition duration-150">
+                    Master Login
                 </button>
-                <button id="logout-btn" title="लॉगआउट" class="p-2 text-gray-600 hover:text-red-600 transition duration-150">
-                    <i class="ph-fill ph-sign-out text-2xl"></i>
+            </div>
+
+            <!-- Client Login Form -->
+            <div id="clientLoginForm" class="hidden">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Client Username</label>
+                    <input type="text" id="clientUsername" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value="client">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Client Password</label>
+                    <input type="password" id="clientPassword" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value="54321">
+                </div>
+                <button id="clientLoginBtn" class="w-full bg-green-600 hover:bg-green-700 text-white p-3 rounded-lg font-semibold transition duration-150">
+                    Client Login
                 </button>
+            </div>
+
+            <div class="mt-6 text-center">
+                <button id="themeToggle" class="text-gray-500 hover:text-gray-700">
+                    🌙 Dark Mode
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Screen -->
+    <div id="chatScreen" class="hidden min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+            <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+                <div>
+                    <h1 class="text-xl font-bold text-indigo-600 dark:text-indigo-400" id="chatTitle">Private Chat</h1>
+                    <p class="text-sm text-gray-500 dark:text-gray-400" id="userRoleDisplay"></p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button id="themeToggleChat" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+                        🌙
+                    </button>
+                    <button id="adminSettingsBtn" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hidden">
+                        ⚙️
+                    </button>
+                    <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+                        Logout
+                    </button>
+                </div>
             </div>
         </header>
 
-        <!-- Loading Indicator -->
-        <div id="loading-screen" class="text-center p-10 hidden">
-            <i class="ph-bold ph-spinner-gap animate-spin text-4xl text-indigo-600"></i>
-            <p class="mt-4 text-gray-600 font-semibold">ऐप लोड हो रहा है...</p>
-        </div>
-
-        <!-- Login Screen -->
-        <div id="login-screen" class="hidden p-4">
-            <h2 id="login-title" class="text-2xl font-semibold mb-6 text-center text-gray-700">मास्टर लॉगिन</h2>
-            <form id="login-form" class="space-y-4">
-                <input type="text" id="login-username" placeholder="यूज़रनेम" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                <input type="password" id="login-password" placeholder="पासवर्ड" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition duration-150">लॉग इन करें</button>
-            </form>
-            <button id="switch-role-btn" class="w-full mt-4 py-2 text-sm text-indigo-600 hover:text-indigo-800 transition duration-150">
-                क्लाइंट लॉगिन पर स्विच करें
-            </button>
-            <p id="auth-status" class="mt-4 text-center text-sm text-red-500"></p>
-        </div>
-
-        <!-- Chat Screen -->
-        <div id="chat-screen" class="hidden">
-            <!-- User ID Display -->
-            <div class="mb-4 p-2 bg-gray-100 rounded-lg text-sm text-gray-600 break-all">
-                <span class="font-semibold">यूआईडी (UID):</span> <span id="current-uid"></span>
-            </div>
-
-            <!-- Messages Area -->
-            <div id="messages" class="p-3 bg-gray-50 rounded-xl border border-gray-200">
-                <!-- Messages will be loaded here -->
-                <p id="no-messages" class="text-center text-gray-400 italic">कोई संदेश नहीं...</p>
-            </div>
-
-            <!-- Input Form -->
-            <form id="message-form" class="mt-6 flex space-x-2">
-                <input type="text" id="message-input" placeholder="अपना संदेश टाइप करें..." required class="flex-grow p-3 border border-indigo-300 rounded-xl focus:ring-2 focus:ring-indigo-500">
-                <button type="submit" class="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition duration-150 active:scale-95">
-                    <i class="ph-fill ph-paper-plane-right text-xl"></i>
-                </button>
-            </form>
-        </div>
-
-        <!-- Admin Settings Modal (Hidden by default) -->
-        <div id="admin-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-xl w-full max-w-md p-6 shadow-2xl">
-                <h3 class="text-2xl font-bold mb-4 border-b pb-2">एडमिन क्रेडेंशियल सेटिंग्स</h3>
-                <form id="admin-form" class="space-y-4">
-                    <p class="text-sm text-gray-500">मास्टर और क्लाइंट के लॉगिन विवरण बदलें।</p>
-                    
-                    <!-- Master Creds -->
-                    <div class="bg-indigo-50 p-4 rounded-lg space-y-3">
-                        <label class="block font-semibold text-indigo-700">मास्टर क्रेडेंशियल्स</label>
-                        <input type="text" id="master-user" placeholder="मास्टर यूज़रनेम" required class="w-full p-2 border rounded-lg">
-                        <input type="password" id="master-pass" placeholder="मास्टर पासवर्ड" required class="w-full p-2 border rounded-lg">
-                    </div>
-
-                    <!-- Client Creds -->
-                    <div class="bg-red-50 p-4 rounded-lg space-y-3">
-                        <label class="block font-semibold text-red-700">क्लाइंट क्रेडेंशियल्स</label>
-                        <input type="text" id="client-user" placeholder="क्लाइंट यूज़रनेम" required class="w-full p-2 border rounded-lg">
-                        <input type="password" id="client-pass" placeholder="क्लाइंट पासवर्ड" required class="w-full p-2 border rounded-lg">
-                    </div>
-                    
-                    <button type="submit" class="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition duration-150">सेव क्रेडेंशियल्स</button>
-                    <button type="button" id="close-admin-btn" class="w-full py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-100 transition duration-150">बंद करें</button>
-                </form>
-                <p id="admin-status" class="mt-3 text-center text-sm font-semibold"></p>
-            </div>
-        </div>
-        
-        <!-- Custom Alert/Modal (For delete confirmation) -->
-        <div id="custom-alert" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-xl w-full max-w-xs p-6 shadow-2xl text-center">
-                <h4 id="alert-title" class="text-xl font-bold mb-3 text-gray-800">पुष्टि करें</h4>
-                <p id="alert-message" class="mb-5 text-gray-600">क्या आप वाकई इस संदेश को हटाना चाहते हैं?</p>
-                <div class="flex justify-around space-x-3">
-                    <button id="alert-confirm" class="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-150">हाँ</button>
-                    <button id="alert-cancel" class="flex-1 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition duration-150">नहीं</button>
+        <!-- Admin Settings Modal -->
+        <div id="adminModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-40">
+            <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4">
+                <h3 class="text-lg font-bold mb-4 dark:text-white">Admin Settings</h3>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2 dark:text-gray-300">Master Username</label>
+                    <input type="text" id="newMasterUser" class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:text-white" value="master">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2 dark:text-gray-300">Master Password</label>
+                    <input type="password" id="newMasterPass" class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:text-white" value="12345">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2 dark:text-gray-300">Client Username</label>
+                    <input type="text" id="newClientUser" class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:text-white" value="client">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-2 dark:text-gray-300">Client Password</label>
+                    <input type="password" id="newClientPass" class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:text-white" value="54321">
+                </div>
+                
+                <div class="flex space-x-3">
+                    <button id="saveSettingsBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg">
+                        Save
+                    </button>
+                    <button id="closeAdminModal" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg">
+                        Cancel
+                    </button>
                 </div>
             </div>
         </div>
 
+        <!-- Messages Area -->
+        <main class="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full">
+            <div id="messagesContainer" class="space-y-4">
+                <!-- Messages will appear here -->
+            </div>
+        </main>
+
+        <!-- Input Area -->
+        <footer class="bg-white border-t border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+            <div class="max-w-4xl mx-auto p-4">
+                <div class="flex space-x-3">
+                    <input 
+                        type="text" 
+                        id="messageInput" 
+                        placeholder="Type your message..." 
+                        class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                        disabled
+                    >
+                    <button 
+                        id="sendButton" 
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition duration-150 disabled:bg-indigo-400"
+                        disabled
+                    >
+                        Send
+                    </button>
+                </div>
+                
+                <!-- Master Controls -->
+                <div id="masterControls" class="mt-3 flex space-x-2 hidden">
+                    <button id="deleteAllBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">
+                        Delete All Messages
+                    </button>
+                    <button id="clearChatBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm">
+                        Clear Chat (Client Side)
+                    </button>
+                </div>
+            </div>
+        </footer>
     </div>
 
-    <!-- Firebase Imports -->
+    <!-- Firebase and App Script -->
     <script type="module">
-        // Firebase Setup
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, orderBy, addDoc, deleteDoc, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, getDocs, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // Global Variables
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        // Fixed IDs for Role Assignment (as requested)
-        const MASTER_ID = 'MASTER-USER-FIXED-ID';
-        const CLIENT_ID = 'CLIENT-USER-FIXED-ID';
-        
-        // Master & Client Login Credentials (Default)
-        const DEFAULT_CREDS = {
-            master_username: 'master',
-            master_password: '12345',
-            client_username: 'client',
-            client_password: '54321',
+        // Your Firebase Configuration - Replace with your actual config
+        const firebaseConfig = {
+            apiKey: "AIzaSyBmImrvVVCJ5E1yAZAI4NXSweEg__hqF94",
+            authDomain: "private-chat-14deb.firebaseapp.com",
+            projectId: "private-chat-14deb",
+            storageBucket: "private-chat-14deb.firebasestorage.app",
+            messagingSenderId: "255060970461",
+            appId: "1:255060970461:web:e6dd31ce5952334ae64434"
         };
-        
-        // App State
-        let db, auth;
-        let currentUserId = null;
-        let currentUserRole = null; // 'Master' or 'Client'
-        let currentCredentials = null;
-        let isAuthReady = false;
-        let loginRole = 'Master'; // Tracks which role is currently trying to log in
 
-        // Auto-Delete Time in milliseconds (e.g., 30 seconds) - Only applies to Client messages
-        const AUTO_DELETE_TIME_MS = 30000;
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Constants
+        const MASTER_ID = "master_user";
+        const CLIENT_ID = "client_user";
+        const CONFIG_DOC = "chat_config";
+        const MESSAGES_COLLECTION = "private_messages";
 
         // DOM Elements
-        const loadingScreen = document.getElementById('loading-screen');
-        const loginScreen = document.getElementById('login-screen');
-        const chatScreen = document.getElementById('chat-screen');
-        const loginTitle = document.getElementById('login-title');
-        const loginForm = document.getElementById('login-form');
-        const switchRoleBtn = document.getElementById('switch-role-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        const adminSettingsBtn = document.getElementById('admin-settings-btn');
-        const messagesEl = document.getElementById('messages');
-        const messageForm = document.getElementById('message-form');
-        const messageInput = document.getElementById('message-input');
-        const userRoleDisplay = document.getElementById('user-role-display');
-        const currentUidEl = document.getElementById('current-uid');
-        const authStatusEl = document.getElementById('auth-status');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loginScreen = document.getElementById('loginScreen');
+        const chatScreen = document.getElementById('chatScreen');
         
-        // Admin Modal Elements
-        const adminModal = document.getElementById('admin-modal');
-        const adminForm = document.getElementById('admin-form');
-        const closeAdminBtn = document.getElementById('close-admin-btn');
-        const adminStatusEl = document.getElementById('admin-status');
+        // Login Elements
+        const masterLoginTab = document.getElementById('masterLoginTab');
+        const clientLoginTab = document.getElementById('clientLoginTab');
+        const masterLoginForm = document.getElementById('masterLoginForm');
+        const clientLoginForm = document.getElementById('clientLoginForm');
+        const masterLoginBtn = document.getElementById('masterLoginBtn');
+        const clientLoginBtn = document.getElementById('clientLoginBtn');
         
-        // Custom Alert/Modal Elements
-        const customAlert = document.getElementById('custom-alert');
-        const alertConfirmBtn = document.getElementById('alert-confirm');
-        const alertCancelBtn = document.getElementById('alert-cancel');
-        const alertMessageEl = document.getElementById('alert-message');
+        // Chat Elements
+        const messagesContainer = document.getElementById('messagesContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const userRoleDisplay = document.getElementById('userRoleDisplay');
+        const chatTitle = document.getElementById('chatTitle');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const themeToggle = document.getElementById('themeToggle');
+        const themeToggleChat = document.getElementById('themeToggleChat');
+        
+        // Master Controls
+        const masterControls = document.getElementById('masterControls');
+        const deleteAllBtn = document.getElementById('deleteAllBtn');
+        const clearChatBtn = document.getElementById('clearChatBtn');
+        const adminSettingsBtn = document.getElementById('adminSettingsBtn');
+        const adminModal = document.getElementById('adminModal');
+        const closeAdminModal = document.getElementById('closeAdminModal');
+        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 
-        // --- Firebase/Firestore References ---
-        const getConfigDocRef = () => doc(db, 'artifacts', appId, 'public', 'data', 'config', 'credentials');
-        const getChatCollectionRef = () => collection(db, 'artifacts', appId, 'public', 'data', 'chat', 'messages');
+        // Global State
+        let currentUser = null;
+        let currentUserRole = null;
+        let autoDeleteTimers = new Map();
 
-        // --- Utility Functions ---
+        // Initialize App
+        async function initApp() {
+            // Check for saved theme
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.body.classList.add('dark-mode');
+                themeToggle.textContent = '☀️ Light Mode';
+                themeToggleChat.textContent = '☀️';
+            }
 
-        /**
-         * Shows the custom alert modal for confirmation.
-         * @param {string} message - The message to display.
-         * @param {function} onConfirm - Callback function on confirmation.
-         */
-        function showCustomAlert(message, onConfirm) {
-            alertMessageEl.textContent = message;
-            customAlert.classList.remove('hidden');
-
-            const handleConfirm = () => {
-                customAlert.classList.add('hidden');
-                onConfirm();
-                alertConfirmBtn.removeEventListener('click', handleConfirm);
-                alertCancelBtn.removeEventListener('click', handleCancel);
-            };
-
-            const handleCancel = () => {
-                customAlert.classList.add('hidden');
-                alertConfirmBtn.removeEventListener('click', handleConfirm);
-                alertCancelBtn.removeEventListener('click', handleCancel);
-            };
-
-            alertConfirmBtn.addEventListener('click', handleConfirm);
-            alertCancelBtn.addEventListener('click', handleCancel);
-        }
-
-        /**
-         * Toggles between the three main screens.
-         * @param {string} screenName - 'login', 'chat', or 'admin'
-         */
-        function showScreen(screenName) {
-            loadingScreen.classList.add('hidden');
-            loginScreen.classList.add('hidden');
-            chatScreen.classList.add('hidden');
-            adminModal.classList.add('hidden');
+            // Setup event listeners
+            setupEventListeners();
             
-            if (screenName === 'login') {
-                loginScreen.classList.remove('hidden');
-            } else if (screenName === 'chat') {
-                chatScreen.classList.remove('hidden');
-            } else if (screenName === 'admin') {
-                adminModal.classList.remove('hidden');
-            }
-        }
-        
-        /**
-         * Fetches login credentials from Firestore or initializes them if not found.
-         */
-        async function fetchAndSetCredentials() {
-            try {
-                const docRef = getConfigDocRef();
-                const docSnap = await getDoc(docRef);
-
-                if (docSnap.exists()) {
-                    currentCredentials = docSnap.data();
-                    console.log("Credentials fetched from Firestore.");
-                } else {
-                    // Initialize with default credentials
-                    await setDoc(docRef, DEFAULT_CREDS);
-                    currentCredentials = DEFAULT_CREDS;
-                    console.log("Credentials initialized in Firestore.");
-                }
-                
-                // Show the login screen after credentials are ready
-                showScreen('login');
-            } catch (error) {
-                console.error("Error fetching/setting credentials:", error);
-                authStatusEl.textContent = "डेटाबेस त्रुटि: क्रेडेंशियल्स लोड नहीं हो पाए।";
-            }
+            // Initialize Firebase auth
+            await initializeAuth();
+            
+            // Hide loading overlay
+            loadingOverlay.classList.add('hidden');
         }
 
-        /**
-         * Handles user login based on credentials.
-         */
-        function handleLogin(event) {
-            event.preventDefault();
-            authStatusEl.textContent = "";
+        function setupEventListeners() {
+            // Login Tab Switchers
+            masterLoginTab.addEventListener('click', () => switchLoginTab('master'));
+            clientLoginTab.addEventListener('click', () => switchLoginTab('client'));
+            
+            // Login Buttons
+            masterLoginBtn.addEventListener('click', () => handleLogin('master'));
+            clientLoginBtn.addEventListener('click', () => handleLogin('client'));
+            
+            // Chat Functions
+            sendButton.addEventListener('click', sendMessage);
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+            
+            // Theme Toggle
+            themeToggle.addEventListener('click', toggleTheme);
+            themeToggleChat.addEventListener('click', toggleTheme);
+            
+            // Logout
+            logoutBtn.addEventListener('click', handleLogout);
+            
+            // Master Controls
+            deleteAllBtn.addEventListener('click', deleteAllMessages);
+            clearChatBtn.addEventListener('click', clearClientChat);
+            
+            // Admin Settings
+            adminSettingsBtn.addEventListener('click', () => adminModal.classList.remove('hidden'));
+            closeAdminModal.addEventListener('click', () => adminModal.classList.add('hidden'));
+            saveSettingsBtn.addEventListener('click', saveAdminSettings);
+        }
 
-            const username = document.getElementById('login-username').value.trim();
-            const password = document.getElementById('login-password').value;
-
-            if (!currentCredentials) {
-                authStatusEl.textContent = "क्रेडेंशियल्स अभी लोड नहीं हुए हैं। कृपया पुनः प्रयास करें।";
-                return;
-            }
-
-            let loginSuccessful = false;
-            let role = null;
-
-            if (loginRole === 'Master' && 
-                username === currentCredentials.master_username && 
-                password === currentCredentials.master_password) {
-                
-                loginSuccessful = true;
-                role = 'Master';
-
-            } else if (loginRole === 'Client' && 
-                       username === currentCredentials.client_username && 
-                       password === currentCredentials.client_password) {
-                
-                loginSuccessful = true;
-                role = 'Client';
-
-            }
-
-            if (loginSuccessful) {
-                // Assign fixed user ID based on role for application logic
-                currentUserId = (role === 'Master' ? MASTER_ID : CLIENT_ID);
-                currentUserRole = role;
-                
-                // Clear form and show chat
-                loginForm.reset();
-                setupChat();
+        function switchLoginTab(tab) {
+            if (tab === 'master') {
+                masterLoginTab.classList.add('bg-indigo-600', 'text-white');
+                masterLoginTab.classList.remove('bg-gray-200', 'text-gray-700');
+                clientLoginTab.classList.add('bg-gray-200', 'text-gray-700');
+                clientLoginTab.classList.remove('bg-green-600', 'text-white');
+                masterLoginForm.classList.remove('hidden');
+                clientLoginForm.classList.add('hidden');
             } else {
-                authStatusEl.textContent = "अमान्य यूज़रनेम या पासवर्ड।";
+                clientLoginTab.classList.add('bg-green-600', 'text-white');
+                clientLoginTab.classList.remove('bg-gray-200', 'text-gray-700');
+                masterLoginTab.classList.add('bg-gray-200', 'text-gray-700');
+                masterLoginTab.classList.remove('bg-indigo-600', 'text-white');
+                clientLoginForm.classList.remove('hidden');
+                masterLoginForm.classList.add('hidden');
             }
         }
 
-        /**
-         * Sets up the chat interface after successful login.
-         */
-        function setupChat() {
-            console.log(`User logged in as ${currentUserRole} with fixed ID: ${currentUserId}`);
-            userRoleDisplay.textContent = currentUserRole === 'Master' ? 'मास्टर' : 'क्लाइंट';
-            currentUidEl.textContent = currentUserId;
+        async function handleLogin(role) {
+            const username = role === 'master' 
+                ? document.getElementById('masterUsername').value 
+                : document.getElementById('clientUsername').value;
+            const password = role === 'master'
+                ? document.getElementById('masterPassword').value
+                : document.getElementById('clientPassword').value;
 
-            // Show admin settings button only for Master
-            if (currentUserRole === 'Master') {
+            try {
+                const configDoc = await getDoc(doc(db, 'config', CONFIG_DOC));
+                let credentials;
+
+                if (configDoc.exists()) {
+                    credentials = configDoc.data();
+                } else {
+                    // Create default credentials
+                    credentials = {
+                        master: { username: 'master', password: '12345' },
+                        client: { username: 'client', password: '54321' }
+                    };
+                    await setDoc(doc(db, 'config', CONFIG_DOC), credentials);
+                }
+
+                const roleCredentials = credentials[role];
+                if (username === roleCredentials.username && password === roleCredentials.password) {
+                    currentUserRole = role;
+                    currentUser = role === 'master' ? MASTER_ID : CLIENT_ID;
+                    
+                    await showChatScreen();
+                    await initializeChat();
+                } else {
+                    alert('Invalid credentials!');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Login failed. Please try again.');
+            }
+        }
+
+        async function showChatScreen() {
+            loginScreen.classList.add('hidden');
+            chatScreen.classList.remove('hidden');
+            
+            userRoleDisplay.textContent = `${currentUserRole} Mode`;
+            chatTitle.textContent = `Private Chat - ${currentUserRole}`;
+            
+            // Show master controls only for master
+            if (currentUserRole === 'master') {
+                masterControls.classList.remove('hidden');
                 adminSettingsBtn.classList.remove('hidden');
             } else {
+                masterControls.classList.add('hidden');
                 adminSettingsBtn.classList.add('hidden');
             }
-
-            showScreen('chat');
-            listenForMessages();
-        }
-
-        /**
-         * Renders all messages in the UI and sets up auto-deletion.
-         * @param {Array<Object>} messages - Array of message documents.
-         */
-        function renderMessages(messages) {
-            messagesEl.innerHTML = '';
             
-            if (messages.length === 0) {
-                messagesEl.innerHTML = '<p id="no-messages" class="text-center text-gray-400 italic">कोई संदेश नहीं...</p>';
-                return;
-            }
+            // Enable input
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            messageInput.focus();
+        }
 
-            messages.forEach(msg => {
-                const isMaster = msg.userId === MASTER_ID;
-                const isClient = msg.userId === CLIENT_ID;
-                const isCurrentUser = msg.userId === currentUserId;
-                
-                const rowClass = isMaster ? 'master-row' : 'client-row';
-                const msgClass = isMaster ? 'master-msg' : 'client-msg';
-                const senderLabel = isMaster ? 'मास्टर' : 'क्लाइंट';
-                const timeString = msg.timestamp?.toDate ? msg.timestamp.toDate().toLocaleTimeString('hi-IN') : 'अभी';
-
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message-row ${rowClass}`;
-                messageDiv.dataset.id = msg.id; // Store Firestore document ID
-
-                let deleteButton = '';
-                // Delete button logic:
-                // 1. Master can delete any message.
-                // 2. Client can only delete their own message (optional, but good control).
-                if (currentUserRole === 'Master' || (currentUserRole === 'Client' && isCurrentUser)) {
-                    deleteButton = `
-                        <button class="delete-btn p-1 ml-2 text-white/70 hover:text-white transition duration-100" 
-                                data-id="${msg.id}" 
-                                title="संदेश हटाएँ">
-                            <i class="ph-fill ph-x text-sm"></i>
-                        </button>
-                    `;
-                }
-                
-                // Master can delete, so give him the full white button. Client deletion is for his own messages.
-                const deleteHtml = (currentUserRole === 'Master' || isCurrentUser) ? deleteButton : '';
-
-                const contentHtml = `
-                    <div class="max-w-[80%] rounded-xl px-4 py-2 shadow-md ${msgClass}">
-                        <div class="flex justify-between items-start">
-                             <span class="font-semibold text-xs opacity-80">${senderLabel}</span>
-                             ${deleteHtml}
-                        </div>
-                        <p class="text-base break-words mt-1">${msg.text}</p>
-                        <span class="block text-right text-[0.6rem] mt-1 opacity-70">${timeString}</span>
-                    </div>
-                `;
-                
-                messageDiv.innerHTML = contentHtml;
-                messagesEl.appendChild(messageDiv);
-
-                // Start auto-delete timer ONLY for Client messages and ONLY if the current user is 'Client'
-                if (currentUserRole === 'Client' && isClient) {
-                    startAutoDeleteTimer(msg);
-                }
-            });
+        async function initializeChat() {
+            const q = query(collection(db, MESSAGES_COLLECTION), orderBy('timestamp', 'asc'));
             
-            // Re-attach delete button listeners
-            messagesEl.querySelectorAll('.delete-btn').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const docId = e.currentTarget.dataset.id;
-                    showCustomAlert("क्या आप वाकई इस संदेश को हटाना चाहते हैं?", () => deleteMessage(docId));
-                });
-            });
-
-            // Scroll to the bottom of the list after rendering, as we use flex-direction: column-reverse
-            messagesEl.scrollTop = 0; 
-        }
-
-        /**
-         * Starts the auto-delete timer for a specific message (Client messages only).
-         * @param {Object} message - The message document object.
-         */
-        function startAutoDeleteTimer(message) {
-            // Check if this message is Client's message
-            if (message.userId !== CLIENT_ID) return; 
-
-            // Calculate time remaining (if timestamp exists)
-            const sentTime = message.timestamp?.toDate ? message.timestamp.toDate().getTime() : Date.now();
-            const timeElapsed = Date.now() - sentTime;
-            const timeRemaining = AUTO_DELETE_TIME_MS - timeElapsed;
-
-            if (timeRemaining <= 0) {
-                console.log(`Deleting expired message: ${message.id}`);
-                // Delete immediately if already expired
-                deleteMessage(message.id);
-                return;
-            }
-
-            console.log(`Starting delete timer for Client message ${message.id}. Deletes in ${timeRemaining / 1000}s`);
-
-            // Use a timeout to delete the message
-            setTimeout(() => {
-                const msgEl = messagesEl.querySelector(`[data-id="${message.id}"]`);
-                if (msgEl) {
-                    // Visually mark for deletion right before final deletion
-                    msgEl.classList.add('deleting');
-                    // A slight delay to allow the animation to show before the Firestore deletion removes it from the screen
-                    setTimeout(() => deleteMessage(message.id), 500); 
-                } else {
-                    // If element is not in DOM (e.g., scrolled out), just delete from Firestore
-                    deleteMessage(message.id);
-                }
-            }, timeRemaining);
-        }
-        
-        /**
-         * Attaches the real-time listener for chat messages.
-         */
-        function listenForMessages() {
-            if (!db || !currentUserId) return;
-
-            const q = query(getChatCollectionRef(), orderBy("timestamp", "desc"));
-
-            // onSnapshot provides real-time updates
             onSnapshot(q, (snapshot) => {
-                const messages = [];
+                messagesContainer.innerHTML = '';
+                
                 snapshot.forEach((doc) => {
-                    messages.push({ id: doc.id, ...doc.data() });
+                    const message = doc.data();
+                    displayMessage(message, doc.id);
                 });
-                renderMessages(messages);
-            }, (error) => {
-                console.error("Error listening to messages:", error);
-                messagesEl.innerHTML = `<p class="text-center text-red-500">संदेश लोड नहीं हो पाए: ${error.message}</p>`;
+
+                // Auto-delete logic for client
+                if (currentUserRole === 'client') {
+                    startAutoDeleteTimers(snapshot);
+                }
             });
         }
 
-        /**
-         * Sends a new message to Firestore.
-         */
-        async function sendMessage(event) {
-            event.preventDefault();
+        function displayMessage(message, messageId) {
+            const messageDiv = document.createElement('div');
+            const isOutgoing = message.senderId === currentUser;
+            
+            messageDiv.className = `flex ${isOutgoing ? 'justify-end' : 'justify-start'}`;
+            messageDiv.innerHTML = `
+                <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-xl ${
+                    isOutgoing 
+                        ? 'bg-indigo-500 text-white rounded-br-none' 
+                        : 'bg-gray-200 text-gray-800 rounded-tl-none dark:bg-gray-600 dark:text-white'
+                }">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-semibold opacity-80">
+                            ${message.senderRole === 'master' ? 'Master' : 'Client'}
+                        </span>
+                        <span class="text-xs opacity-70">
+                            ${new Date(message.timestamp?.toDate()).toLocaleTimeString()}
+                        </span>
+                    </div>
+                    <p class="break-words">${message.text}</p>
+                    ${currentUserRole === 'master' ? `
+                        <div class="mt-2 pt-2 border-t border-opacity-30">
+                            <button onclick="deleteSingleMessage('${messageId}')" class="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded">
+                                Delete
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
 
+        async function sendMessage() {
             const text = messageInput.value.trim();
-            if (text === "") return;
+            if (!text) return;
 
             try {
-                await addDoc(getChatCollectionRef(), {
+                await addDoc(collection(db, MESSAGES_COLLECTION), {
                     text: text,
-                    userId: currentUserId,
-                    timestamp: serverTimestamp()
+                    senderId: currentUser,
+                    senderRole: currentUserRole,
+                    timestamp: new Date(),
+                    seenByClient: currentUserRole === 'client'
                 });
-                messageInput.value = ''; // Clear input
-            } catch (e) {
-                console.error("Error sending message: ", e);
-            }
-        }
-        
-        /**
-         * Deletes a message from Firestore.
-         * @param {string} docId - The document ID of the message to delete.
-         */
-        async function deleteMessage(docId) {
-            try {
-                const docRef = doc(getChatCollectionRef(), docId);
-                await deleteDoc(docRef);
-                console.log(`Message ${docId} deleted successfully.`);
-            } catch (e) {
-                console.error("Error deleting message: ", e);
-            }
-        }
-        
-        /**
-         * Saves new credentials to Firestore (Master Admin function).
-         */
-        async function saveAdminCredentials(event) {
-            event.preventDefault();
-            
-            const masterUser = document.getElementById('master-user').value.trim();
-            const masterPass = document.getElementById('master-pass').value;
-            const clientUser = document.getElementById('client-user').value.trim();
-            const clientPass = document.getElementById('client-pass').value;
-            
-            if (!masterUser || !masterPass || !clientUser || !clientPass) {
-                adminStatusEl.textContent = "सभी फ़ील्ड आवश्यक हैं।";
-                adminStatusEl.classList.add('text-red-500');
-                return;
-            }
-
-            try {
-                await setDoc(getConfigDocRef(), {
-                    master_username: masterUser,
-                    master_password: masterPass,
-                    client_username: clientUser,
-                    client_password: clientPass,
-                });
-
-                // Update current runtime credentials
-                currentCredentials = {
-                    master_username: masterUser, master_password: masterPass,
-                    client_username: clientUser, client_password: clientPass
-                };
-
-                adminStatusEl.textContent = "क्रेडेंशियल्स सफलतापूर्वक सेव किए गए!";
-                adminStatusEl.classList.remove('text-red-500');
-                adminStatusEl.classList.add('text-green-600');
                 
-                setTimeout(() => adminModal.classList.add('hidden'), 1500);
-
-            } catch (e) {
-                console.error("Error saving credentials: ", e);
-                adminStatusEl.textContent = "क्रेडेंशियल्स सेव करने में त्रुटि आई।";
-                adminStatusEl.classList.add('text-red-500');
-            }
-        }
-
-
-        // --- Initialization and Event Listeners ---
-        
-        /**
-         * Main initialization function for Firebase and Auth.
-         */
-        async function initFirebase() {
-            // Set log level to Debug for better visibility
-            setLogLevel('debug');
-            
-            // Initialize App
-            const app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            
-            // Sign in anonymously using the token provided by the canvas environment
-            try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                isAuthReady = true;
-                console.log("Firebase Auth initialized and signed in.");
+                messageInput.value = '';
             } catch (error) {
-                console.error("Firebase Auth failed:", error);
-                isAuthReady = true;
+                console.error('Error sending message:', error);
+                alert('Failed to send message.');
             }
-            
-            // Fetch credentials before showing the login screen
-            await fetchAndSetCredentials();
         }
 
-        // --- Event Listeners ---
+        function startAutoDeleteTimers(snapshot) {
+            // Clear existing timers
+            autoDeleteTimers.forEach(timer => clearTimeout(timer));
+            autoDeleteTimers.clear();
 
-        loginForm.addEventListener('submit', handleLogin);
-        messageForm.addEventListener('submit', sendMessage);
-        adminForm.addEventListener('submit', saveAdminCredentials);
-        
-        logoutBtn.addEventListener('click', async () => {
-            currentUserRole = null;
-            currentUserId = null;
-            adminSettingsBtn.classList.add('hidden');
-            await signOut(auth); // Sign out the anonymous user
-            await signInAnonymously(auth); // Sign in a new anonymous user for clean slate
-            showScreen('login');
-            loginTitle.textContent = "मास्टर लॉगिन";
-            switchRoleBtn.textContent = "क्लाइंट लॉगिन पर स्विच करें";
-            loginRole = 'Master';
-            authStatusEl.textContent = "आप सफलतापूर्वक लॉग आउट हो गए हैं।";
-        });
-        
-        switchRoleBtn.addEventListener('click', () => {
-            if (loginRole === 'Master') {
-                loginRole = 'Client';
-                loginTitle.textContent = "क्लाइंट लॉगिन";
-                switchRoleBtn.textContent = "मास्टर लॉगिन पर स्विच करें";
-            } else {
-                loginRole = 'Master';
-                loginTitle.textContent = "मास्टर लॉगिन";
-                switchRoleBtn.textContent = "क्लाइंट लॉगिन पर स्विच करें";
-            }
-            loginForm.reset();
-            authStatusEl.textContent = "";
-        });
+            snapshot.forEach((doc) => {
+                const message = doc.data();
+                if (!message.seenByClient && message.senderId === MASTER_ID) {
+                    // Mark as seen and schedule deletion
+                    updateDoc(doc.ref, { seenByClient: true });
+                    
+                    const timer = setTimeout(async () => {
+                        await deleteDoc(doc.ref);
+                    }, 30000); // 30 seconds
+                    
+                    autoDeleteTimers.set(doc.id, timer);
+                }
+            });
+        }
 
-        adminSettingsBtn.addEventListener('click', () => {
-            if (currentUserRole !== 'Master' || !currentCredentials) return;
+        async function deleteAllMessages() {
+            if (currentUserRole !== 'master') return;
             
-            // Populate form with current values
-            document.getElementById('master-user').value = currentCredentials.master_username;
-            document.getElementById('master-pass').value = currentCredentials.master_password;
-            document.getElementById('client-user').value = currentCredentials.client_username;
-            document.getElementById('client-pass').value = currentCredentials.client_password;
-            adminStatusEl.textContent = "";
-            adminModal.classList.remove('hidden');
-        });
-        
-        closeAdminBtn.addEventListener('click', () => {
-            adminModal.classList.add('hidden');
-        });
+            if (!confirm('Are you sure you want to delete ALL messages?')) return;
+            
+            try {
+                const querySnapshot = await getDocs(collection(db, MESSAGES_COLLECTION));
+                const deletePromises = [];
+                querySnapshot.forEach((doc) => {
+                    deletePromises.push(deleteDoc(doc.ref));
+                });
+                await Promise.all(deletePromises);
+            } catch (error) {
+                console.error('Error deleting messages:', error);
+                alert('Failed to delete messages.');
+            }
+        }
 
-        // Start the application
-        window.onload = initFirebase;
+        async function deleteSingleMessage(messageId) {
+            if (currentUserRole !== 'master') return;
+            
+            try {
+                await deleteDoc(doc(db, MESSAGES_COLLECTION, messageId));
+            } catch (error) {
+                console.error('Error deleting message:', error);
+                alert('Failed to delete message.');
+            }
+        }
 
+        async function clearClientChat() {
+            if (currentUserRole !== 'master') return;
+            
+            try {
+                const q = query(collection(db, MESSAGES_COLLECTION));
+                const querySnapshot = await getDocs(q);
+                const deletePromises = [];
+                
+                querySnapshot.forEach((doc) => {
+                    const message = doc.data();
+                    if (message.senderId === CLIENT_ID) {
+                        deletePromises.push(deleteDoc(doc.ref));
+                    }
+                });
+                
+                await Promise.all(deletePromises);
+                alert('Client messages cleared!');
+            } catch (error) {
+                console.error('Error clearing client chat:', error);
+                alert('Failed to clear client messages.');
+            }
+        }
+
+        async function saveAdminSettings() {
+            if (currentUserRole !== 'master') return;
+            
+            try {
+                const newCredentials = {
+                    master: {
+                        username: document.getElementById('newMasterUser').value,
+                        password: document.getElementById('newMasterPass').value
+                    },
+                    client: {
+                        username: document.getElementById('newClientUser').value,
+                        password: document.getElementById('newClientPass').value
+                    }
+                };
+                
+                await setDoc(doc(db, 'config', CONFIG_DOC), newCredentials);
+                adminModal.classList.add('hidden');
+                alert('Settings saved successfully!');
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                alert('Failed to save settings.');
+            }
+        }
+
+        function toggleTheme() {
+            const isDark = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', isDark);
+            
+            if (isDark) {
+                themeToggle.textContent = '☀️ Light Mode';
+                themeToggleChat.textContent = '☀️';
+            } else {
+                themeToggle.textContent = '🌙 Dark Mode';
+                themeToggleChat.textContent = '🌙';
+            }
+        }
+
+        function handleLogout() {
+            // Clear timers
+            autoDeleteTimers.forEach(timer => clearTimeout(timer));
+            autoDeleteTimers.clear();
+            
+            // Reset state
+            currentUser = null;
+            currentUserRole = null;
+            
+            // Show login screen
+            chatScreen.classList.add('hidden');
+            loginScreen.classList.remove('hidden');
+            
+            // Clear inputs
+            document.getElementById('masterUsername').value = 'master';
+            document.getElementById('masterPassword').value = '12345';
+            document.getElementById('clientUsername').value = 'client';
+            document.getElementById('clientPassword').value = '54321';
+            
+            // Switch to master tab
+            switchLoginTab('master');
+        }
+
+        async function initializeAuth() {
+            try {
+                // Sign in anonymously for Firebase auth (required for Firestore)
+                await signInAnonymously(auth);
+            } catch (error) {
+                console.error('Auth initialization error:', error);
+            }
+        }
+
+        // Make delete function globally available for inline onclick
+        window.deleteSingleMessage = deleteSingleMessage;
+
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>
