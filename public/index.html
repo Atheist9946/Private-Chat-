@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Private Chat with Gemini AI</title>
+    <title>Gemini-Powered Chat</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         // Tailwind configuration: Inter font ko default rakha gaya hai
@@ -13,11 +13,12 @@
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
                     },
-                }
+                },
             }
         }
     </script>
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <!-- FontAwesome is not strictly necessary but kept for potential icons -->
+    <!-- <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script> -->
     <style>
         /* Custom CSS */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -28,11 +29,11 @@
         .chat-container {
             max-width: 700px;
             margin: 20px auto;
-            min-height: 80vh;
+            min-height: 85vh; /* Thoda zyada height responsive look ke liye */
             display: flex;
             flex-direction: column;
             border-radius: 12px;
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15); /* Thoda gehra shadow */
             overflow: hidden;
             background-color: white;
         }
@@ -40,9 +41,19 @@
             flex-grow: 1;
             overflow-y: auto;
             padding: 1rem;
+            display: flex; /* Flexbox for dynamic message positioning */
+            flex-direction: column;
+        }
+        /* Mobile-first adjustments */
+        @media (max-width: 640px) {
+            .chat-container {
+                margin: 0;
+                min-height: 100vh;
+                border-radius: 0;
+            }
         }
         .message {
-            max-width: 80%;
+            max-width: 90%; /* Mobile ke liye zyada width */
             padding: 10px 15px;
             border-radius: 16px;
             margin-bottom: 12px;
@@ -55,37 +66,38 @@
             border-bottom-left-radius: 4px;
         }
         .message-outgoing {
-            background-color: #4f46e5; /* Gehra neela (Deep Indigo) */
+            background-color: #4338CA; /* Deep Indigo 700 */
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 4px;
         }
         .loading-overlay {
             z-index: 1000;
-            background-color: rgba(255, 255, 255, 0.9);
+            background-color: rgba(255, 255, 255, 0.95);
         }
     </style>
 </head>
-<body class="p-4">
+<body class="p-4 md:p-0">
 
     <div id="loadingOverlay" class="fixed inset-0 loading-overlay hidden">
         <div class="flex flex-col items-center justify-center h-full">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-indigo-600"></div>
             <p id="loading-text" class="mt-4 text-lg font-semibold text-indigo-600">Authenticating...</p>
         </div>
     </div>
 
     <div class="chat-container">
-        <header class="p-4 border-b border-gray-200 bg-indigo-50">
-            <h1 class="text-2xl font-bold text-indigo-700">Gemini-Powered Chat</h1>
-            <p id="authStatus" class="text-sm text-gray-500 mt-1">Authenticating...</p>
+        <header class="p-4 border-b border-gray-200 bg-indigo-50 flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold text-indigo-700">Gemini Chat</h1>
+            <p id="authStatus" class="text-xs text-gray-500 mt-1">Authenticating...</p>
         </header>
 
-        <div id="messages" class="message-area flex flex-col">
+        <div id="messages" class="message-area">
             <p id="initial-msg" class="text-center text-gray-400 my-4">Waiting for connection...</p>
         </div>
         
-        <div id="ai-status-box" class="p-3 bg-yellow-50 border-t border-yellow-200 hidden">
+        <!-- AI Status Box to show Summarize/Tone Check results -->
+        <div id="ai-status-box" class="p-3 bg-yellow-50 border-t border-yellow-200 hidden transition-all duration-300">
             <p class="font-semibold text-yellow-800">AI Result:</p>
             <p id="ai-result-content" class="text-sm text-gray-700 mt-1"></p>
         </div>
@@ -93,17 +105,17 @@
         <div class="p-4 border-t border-gray-200 bg-white flex items-center space-x-2">
             <input type="text" id="messageInput" placeholder="Type a message..." 
                    class="flex-1 p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-150" disabled>
-            <button id="sendButton" class="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-semibold transition duration-150 shadow-md disabled:bg-indigo-400" disabled>
+            <button id="sendButton" class="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-semibold transition duration-150 shadow-lg disabled:bg-indigo-400" disabled>
                 Send
             </button>
         </div>
     </div>
 
     <script type="module">
-        // --- Firebase Modules Import ---
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, addDoc, onSnapshot, collection, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // --- Firebase Modules Import (Updated to 12.5.0) ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+        import { getFirestore, addDoc, onSnapshot, collection, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
         // --- Configuration & Global State ---
         let db, auth;
@@ -114,21 +126,19 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Configuration ko Parse karne ki koshish karein (Fix for "Configuration missing" error)
-        let firebaseConfig = {};
-        try {
-            // Check karein ki __firebase_config globally available hai aur string hai
-            if (typeof __firebase_config === 'string') {
-                firebaseConfig = JSON.parse(__firebase_config);
-            } else {
-                console.warn("Firebase configuration (via __firebase_config) is not available or not a string.");
-            }
-        } catch (error) {
-            console.error("Failed to parse __firebase_config:", error);
-        }
+        // User dwara di gayi Firebase Configuration ko seedhe istemaal karein
+        const firebaseConfig = {
+            apiKey: "AIzaSyBmImrvVVCJ5E1yAZAI4NXSweEg__hqF94",
+            authDomain: "private-chat-14deb.firebaseapp.com",
+            projectId: "private-chat-14deb",
+            storageBucket: "private-chat-14deb.firebasestorage.app",
+            messagingSenderId: "255060970461",
+            appId: "1:255060970461:web:e6dd31ce5952334ae64434",
+            measurementId: "G-QWDK17SMY9"
+        };
+
 
         // Gemini API configuration
-        // NOTE: Please insert your Gemini API key here (if needed for the AI features).
         const apiKey = ""; 
         const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
@@ -162,39 +172,54 @@
 
         // --- Core Logic Functions ---
 
-        // Function: Gemini API ko call karna
-        async function callGemini(userPrompt, systemPrompt) {
+        // Function: Exponential Backoff ke saath Gemini API ko call karna
+        async function callGemini(userPrompt, systemPrompt, retries = 3) {
             setLoading(true, "Gemini is thinking...");
             hideAIStatus();
 
-            try {
-                const payload = {
-                    contents: [{ parts: [{ text: userPrompt }] }],
-                    systemInstruction: { parts: [{ text: systemPrompt }] },
-                    tools: [{ "google_search": {} }], // Google Search enable karna
-                };
+            const payload = {
+                contents: [{ parts: [{ text: userPrompt }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                tools: [{ "google_search": {} }], // Google Search enable karna
+            };
 
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
 
-                if (!response.ok) {
-                    throw new Error(`API call failed: ${response.statusText}`);
+                    if (response.status === 429 && i < retries - 1) {
+                        // Too Many Requests (Rate Limit), wait and retry
+                        const delay = Math.pow(2, i) * 1000; // 1s, 2s, 4s
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(`API call failed with status: ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    const modelText = result.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I could not generate a response.";
+                    
+                    return modelText;
+
+                } catch (error) {
+                    console.error(`Gemini API call error (Attempt ${i + 1}):`, error);
+                    if (i === retries - 1) {
+                        return `Error: Failed to connect to AI after multiple attempts. (${error.message.substring(0, 50)}...)`;
+                    }
+                    const delay = Math.pow(2, i) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                } finally {
+                     if (i === retries - 1) {
+                        // Last attempt ke baad loading stop karna
+                        setLoading(false, "Ready.");
+                    }
                 }
-                
-                const result = await response.json();
-                const modelText = result.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I could not generate a response.";
-                
-                return modelText;
-
-            } catch (error) {
-                console.error("Gemini API call error:", error);
-                return `Error: Failed to connect to AI. (${error.message.substring(0, 50)}...)`;
-            } finally {
-                // Loading ko band karna, isAuthReady ke adhar par input enable hoga
-                setLoading(false, "Ready.");
             }
         }
 
@@ -205,12 +230,11 @@
             messageElement.classList.add('flex', 'flex-col', message.uid === userId ? 'items-end' : 'items-start');
             
             // Timestamp format karna
-            const timestampText = message.timestamp?.toDate ? 
-                new Date(message.timestamp.toDate()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 
-                '';
+            const timestampDate = message.timestamp?.toDate ? message.timestamp.toDate() : new Date();
+            const timestampText = timestampDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
             // User ka display naam
-            const userDisplayName = message.displayName || (message.uid === userId ? 'You' : 'Guest');
+            const userDisplayName = message.displayName || (message.uid === userId ? 'You' : `Guest-${message.uid.substring(0, 4)}`);
 
             messageElement.innerHTML = `
                 <div class="message ${message.uid === userId ? 'message-outgoing' : 'message-incoming'} relative">
@@ -219,12 +243,12 @@
                     <div class="text-xs mt-1 text-right ${message.uid === userId ? 'text-indigo-200' : 'text-gray-500'}">${timestampText}</div>
                     
                     ${message.uid === userId ? `
-                        <div class="flex mt-1 space-x-2 justify-end">
-                            <button data-text="${message.text.replace(/"/g, '&quot;')}" class="ai-button text-xs font-medium text-gray-600 hover:text-indigo-600 bg-gray-200 hover:bg-gray-300 rounded px-2 py-1 transition duration-150" data-feature="Summarize">
-                                Summarize
+                        <div class="flex mt-2 space-x-2 justify-end pt-1 border-t border-indigo-500/30">
+                            <button data-text="${message.text.replace(/"/g, '&quot;')}" class="ai-button text-xs font-medium text-gray-800 hover:text-indigo-900 bg-white hover:bg-gray-100 rounded-lg px-2 py-1 shadow-md transition duration-150" data-feature="Summarize">
+                                <span class="text-indigo-600 font-bold">AI:</span> Summarize
                             </button>
-                            <button data-text="${message.text.replace(/"/g, '&quot;')}" class="ai-button text-xs font-medium text-gray-600 hover:text-indigo-600 bg-gray-200 hover:bg-gray-300 rounded px-2 py-1 transition duration-150" data-feature="Tone Check">
-                                Tone Check
+                            <button data-text="${message.text.replace(/"/g, '&quot;')}" class="ai-button text-xs font-medium text-gray-800 hover:text-indigo-900 bg-white hover:bg-gray-100 rounded-lg px-2 py-1 shadow-md transition duration-150" data-feature="Tone Check">
+                                <span class="text-indigo-600 font-bold">AI:</span> Tone Check
                             </button>
                         </div>
                     ` : ''}
@@ -237,8 +261,8 @@
         // Function: AI Feature Handler (Summarize/Tone Check)
         async function handleAIFeature(messageText, feature) {
             const systemPrompt = feature === 'Summarize' 
-                ? "You are a concise summarization expert. Summarize the user's message in one short sentence."
-                : "You are an expert on tone. Analyze the following message and state its overall tone (e.g., serious, playful, urgent) in a single, short phrase.";
+                ? "You are a concise summarization expert. Summarize the user's message in one short, clear sentence. Do not add any conversational text."
+                : "You are an expert on tone. Analyze the following message and state its overall tone (e.g., serious, playful, urgent) and provide one word describing its sentiment (positive, negative, neutral) in a short, single phrase. Do not add any conversational text.";
             
             const fullPrompt = `Message to analyze: "${messageText}"`;
             
@@ -258,7 +282,7 @@
             }
             
             aiStatusBox.classList.remove('hidden');
-            aiResultContent.innerHTML = resultText;
+            aiResultContent.innerHTML = `**${feature}**: ${resultText}`;
         }
 
         // Function: Firestore se real-time messages ko sunna
@@ -267,6 +291,7 @@
 
             // Public chat data path: /artifacts/{appId}/public/data/messages
             const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
+            // orderBy('timestamp', 'asc') is used here, but for production, Firestore indexes need to be created.
             const q = query(chatRef, orderBy('timestamp', 'asc'));
 
             // Real-time listener
@@ -308,7 +333,6 @@
             await addDoc(chatRef, {
                 text: text,
                 uid: userId, // User ID store karna zaroori hai
-                displayName: `Guest-${userId.substring(0, 4)}`, // Simple Guest Name
                 timestamp: serverTimestamp()
             });
         }
@@ -316,8 +340,8 @@
         // --- Initialization and Event Handlers ---
 
         async function initializeFirebase() {
-            // Check karein ki configuration empty hai ya nahi
-            if (Object.keys(firebaseConfig).length === 0 || !firebaseConfig.apiKey) {
+            // Check karein ki configuration empty hai ya nahi (Though hardcoded now, good practice)
+            if (!firebaseConfig || !firebaseConfig.apiKey) {
                  authStatusElement.textContent = "Error: Firebase configuration missing or invalid!";
                  setLoading(false);
                  console.error("Initialization Failed: Firebase config is empty or lacks apiKey.");
@@ -334,7 +358,7 @@
                     if (user) {
                         // User signed in hai
                         userId = user.uid;
-                        authStatusElement.textContent = `Signed in as User ID: ${userId.substring(0, 10)}...`;
+                        authStatusElement.textContent = `User ID: ${userId.substring(0, 10)}... | App ID: ${appId.substring(0, 4)}...`;
                         isAuthReady = true;
                         // Loading stop karke input enable karna
                         setLoading(false, "Ready."); 
@@ -374,14 +398,16 @@
 
             messageInput.value = '';
             
+            // UI elements ko disable karna for better user experience
             sendButton.disabled = true; 
-            messageInput.disabled = true; // Input ko bhi disable rakhein
+            messageInput.disabled = true;
 
             try {
                 // Message save karna Firestore mein
                 await saveMessage(userText);
             } catch (error) {
                 console.error("Send message error:", error);
+                // Auth status mein error dikhana
                 authStatusElement.textContent = `Error sending: ${error.message.substring(0, 40)}...`;
             } finally {
                 // Button aur Input ko dobara enable kar dein
@@ -409,20 +435,3 @@
     </script>
 </body>
 </html>
-```eof
-
-### ✅ **Deployment Instructions (Zaroori Kadam):**
-
-1.  **Replace:** Codespaces में अपनी `public/index.html` फ़ाइल के **पुराने कंटेंट को इस पूरे कोड से बदल दें।**
-2.  **Save:** फाइल को save करें (`Ctrl+S` या `Cmd+S`)।
-3.  **Terminal Commands:** टर्मिनल में ये कमांड्स चलाएं:
-    ```bash
-    git add public/index.html
-    git commit -m "FIX: Firebase configuration safety check and input enable"
-    git push
-    firebase deploy --only hosting
-    ```
-
-**Deployment के बाद, अपने ब्राउज़र में ऐप के URL पर जाकर हार्ड रिफ्रेश (Ctrl + Shift + R) जरूर करें।** अगर Firebase configuration अब सही से लोड होती है, तो "Authenticating..." के बाद **इनपुट बॉक्स इनेबल** हो जाना चाहिए।
-
-मुझे बताएं कि क्या अब भी कोई समस्या आ रही है।
